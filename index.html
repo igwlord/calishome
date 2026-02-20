@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <title>Calis.Home</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="calishome.png" />
+    <link rel="apple-touch-icon" href="calishome.png" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Mobile optimizations */
+      body {
+        overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+      }
+      /* Custom scrollbar for guide modal */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #09090b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3f3f46;
+        border-radius: 2px;
+      }
+
+      /* Futuristic Tab Transitions */
+      .tab-animate-enter {
+        animation: tab-enter 0.4s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+        will-change: transform, opacity;
+      }
+
+      @keyframes tab-enter {
+        0% {
+          opacity: 0;
+          transform: translateY(20px) scale(0.98);
+          filter: blur(4px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          filter: blur(0);
+        }
+      }
+
+      /* Timer Pulse Animations */
+      @keyframes pulse-glow {
+        0%,
+        100% {
+          filter: drop-shadow(0 0 5px currentColor) opacity(0.8);
+        }
+        50% {
+          filter: drop-shadow(0 0 20px currentColor) opacity(1);
+        }
+      }
+      @keyframes pulse-glow-fast {
+        0% {
+          filter: drop-shadow(0 0 6px currentColor);
+          stroke-width: 6%;
+        }
+        50% {
+          filter: drop-shadow(0 0 20px currentColor);
+          stroke-width: 7%;
+        }
+        100% {
+          filter: drop-shadow(0 0 6px currentColor);
+          stroke-width: 6%;
+        }
+      }
+      .animate-pulse-glow {
+        animation: pulse-glow 3s ease-in-out infinite;
+      }
+      .animate-pulse-glow-fast {
+        animation: pulse-glow-fast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      /* Completion Flash Animation */
+      @keyframes flash-green {
+        0% {
+          text-shadow: 0 0 0 transparent;
+          transform: scale(1);
+          color: inherit;
+        }
+        30% {
+          text-shadow:
+            0 0 30px #34d399,
+            0 0 10px #34d399;
+          transform: scale(1.03) translateX(5px);
+          color: #6ee7b7;
+        }
+        100% {
+          text-shadow: 0 0 0 transparent;
+          transform: scale(1) translateX(0);
+        }
+      }
+      .animate-flash-green {
+        animation: flash-green 0.6s cubic-bezier(0.2, 0, 0.4, 1);
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "lucide-react": "https://esm.sh/lucide-react@^0.574.0",
+          "react": "https://esm.sh/react@^19.2.4",
+          "react/": "https://esm.sh/react@^19.2.4/",
+          "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+        }
+      }
+    </script>
+  </head>
+  <body
+    class="bg-black text-white antialiased h-screen w-screen overflow-hidden selection:bg-violet-500 selection:text-white"
+  >
+    <div id="root" class="h-full w-full"></div>
+    <script>
+      // Register Service Worker for PWA installation
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("./sw.js")
+            .then((reg) => console.log("SW registered"))
+            .catch((err) => console.log("SW failed", err));
+        });
+      }
+    </script>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

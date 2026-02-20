@@ -1,0 +1,21 @@
+{
+  "name": "Calis.Home",
+  "short_name": "Calis.Home",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "calishome.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "calishome.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

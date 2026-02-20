@@ -1,0 +1,5 @@
+{
+  "name": "CaslisHome",
+  "description": "A bulletproof, mobile-first PWA for bodyweight training with adaptive difficulty and audio feedback.",
+  "requestFramePermissions": []
+}
