@@ -637,6 +637,8 @@ interface WorkoutScreenProps {
   onExit: () => void;
   onComplete: (calories: number) => void;
   restSeconds: number;
+  checkedExercises: string[];
+  onMinimize: () => void;
 }
 
 const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
@@ -645,6 +647,8 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   onExit,
   onComplete,
   restSeconds,
+  checkedExercises,
+  onMinimize,
 }) => {
   const workoutPlan = useMemo(
     () => getDailyPlan(week, day),
@@ -654,8 +658,14 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
 
   const WORK_SECONDS = 45;
 
+  // Skip exercises that were manually checked
+  const startIndex = useMemo(() => {
+    const idx = workoutPlan.exercises.findIndex(ex => !checkedExercises.includes(ex.name));
+    return idx >= 0 ? idx : 0;
+  }, []);
+
   const [phase, setPhase] = useState<Phase>("getReady");
-  const [currentExIndex, setCurrentExIndex] = useState(0);
+  const [currentExIndex, setCurrentExIndex] = useState(startIndex);
   const [currentSet, setCurrentSet] = useState(1);
   const [timeLeft, setTimeLeft] = useState(10);
   const [isActive, setIsActive] = useState(true);
@@ -914,10 +924,16 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
                 CONTINUAR
               </button>
               <button
-                onClick={confirmExit}
-                className="w-full py-3.5 bg-zinc-800 text-red-400 font-bold rounded-xl active:scale-95 transition-transform border border-white/5 hover:bg-zinc-700"
+                onClick={() => { setShowExitConfirm(false); onMinimize(); }}
+                className="w-full py-3.5 bg-zinc-800 text-amber-400 font-bold rounded-xl active:scale-95 transition-transform border border-amber-500/20 hover:bg-zinc-700"
               >
-                SALIR Y PERDER PROGRESO
+                ⏸ PAUSAR Y SALIR
+              </button>
+              <button
+                onClick={confirmExit}
+                className="w-full py-3.5 bg-zinc-900 text-red-400 font-bold rounded-xl active:scale-95 transition-transform border border-white/5 hover:bg-zinc-800 text-sm"
+              >
+                ABANDONAR ENTRENAMIENTO
               </button>
             </div>
           </div>
@@ -1607,7 +1623,7 @@ const AppInner: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [week, setWeek] = useState<WeekLevel>(1);
   const [day, setDay] = useState<number>(1);
-  const [isWorkoutMode, setIsWorkoutMode] = useState(false);
+  const [workoutMode, setWorkoutMode] = useState<'off' | 'active' | 'paused'>('off');
   const [userData, setUserData] = useState<UserData>(() => {
     const saved = localStorage.getItem("chronos_v8_data");
     const parsed = saved ? JSON.parse(saved) : null;
@@ -1733,7 +1749,7 @@ const AppInner: React.FC = () => {
         history: newHistory,
       };
     });
-    setIsWorkoutMode(false);
+    setWorkoutMode('off');
     setActiveTab("home");
   };
 
@@ -1823,14 +1839,21 @@ const AppInner: React.FC = () => {
     return <AuthScreen onLogin={() => setIsAuthenticated(true)} />;
   }
 
-  if (isWorkoutMode) {
+  const todayChecked = userData.dailyChecklist.date === new Date().toDateString()
+    ? userData.dailyChecklist.exercises
+    : [];
+
+  // WorkoutScreen renders hidden when paused to preserve state
+  if (workoutMode === 'active') {
     return (
       <WorkoutScreen
         week={week}
         day={day}
-        onExit={() => setIsWorkoutMode(false)}
+        onExit={() => setWorkoutMode('off')}
         onComplete={handleWorkoutComplete}
         restSeconds={userData.restSeconds ?? 15}
+        checkedExercises={todayChecked}
+        onMinimize={() => setWorkoutMode('paused')}
       />
     );
   }
@@ -1874,25 +1897,35 @@ const AppInner: React.FC = () => {
         )}
         {activeTab === "workout" && (
           <div className="h-full flex flex-col relative w-full overflow-hidden">
-            {!isWorkoutMode && (
-              <TrainingView
-                week={week}
-                setWeek={setWeek}
-                day={day}
-                setDay={setDay}
-                userData={userData}
-                onToggleCheck={toggleChecklist}
-                onResetDay={handleResetDay}
-              />
-            )}
+            <TrainingView
+              week={week}
+              setWeek={setWeek}
+              day={day}
+              setDay={setDay}
+              userData={userData}
+              onToggleCheck={toggleChecklist}
+              onResetDay={handleResetDay}
+            />
             
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-20 z-50 pointer-events-none flex justify-center">
+            {/* Paused workout banner */}
+            {workoutMode === 'paused' && (
               <button
-                onClick={() => setIsWorkoutMode(true)}
-                className="w-full py-4 bg-white text-black font-black rounded-xl hover:bg-zinc-200 transition-colors active:scale-95 text-lg tracking-widest pointer-events-auto shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2"
+                onClick={() => setWorkoutMode('active')}
+                className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-amber-500/90 text-black font-black rounded-2xl shadow-[0_4px_20px_rgba(245,158,11,0.4)] active:scale-95 transition-transform animate-pulse text-sm tracking-wider"
               >
-                 <Dumbbell size={20} /> INICIAR RUTINA
+                <Play size={16} fill="black" /> RETOMAR ENTRENAMIENTO
               </button>
+            )}
+
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-20 z-50 pointer-events-none flex justify-center">
+              {workoutMode === 'off' && (
+                <button
+                  onClick={() => setWorkoutMode('active')}
+                  className="w-full py-4 bg-white text-black font-black rounded-xl hover:bg-zinc-200 transition-colors active:scale-95 text-lg tracking-widest pointer-events-auto shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2"
+                >
+                   <Dumbbell size={20} /> INICIAR RUTINA
+                </button>
+              )}
             </div>
           </div>
         )}
