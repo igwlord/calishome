@@ -1,162 +1,236 @@
-📚 LIBRERÍA DE EJERCICIOS y rutina
+Perfecto.
+Ahora lo hacemos coherente, serio y fisiológicamente lógico.
 
-1️⃣ Push Up (Flexiones)
-Categoría: Push
-MET: 6.0
-Músculos: Pecho, tríceps, deltoide anterior, core
-Sirve para: Fuerza de empuje + estabilidad del tronco.
-Cómo se hace
-Manos ancho hombros
-Cuerpo en línea recta
-Baja controlado hasta 90°
-Sube empujando el suelo
-Errores comunes
-55% → Cadera hundida
-45% → Codos muy abiertos
-40% → Cuello adelantado
-Tips clave
-“Costillas abajo”
-“Glúteos activos”
-Codos 30–45°
-2️⃣ Diamond Push Up
-MET: 6.5
-Enfoque: Tríceps
-Errores:
-50% hombros colapsan
-48% codos se abren
-Tip: si falla forma, reduce reps antes de colapsar técnica.
-3️⃣ Bodyweight Squat
-MET: 5.5
-Sirve para: Fuerza base piernas + movilidad
-Errores:
-50% rodillas colapsan
-35% talones se levantan
-30% espalda redondea
-Tip: peso en talones, pecho abierto.
-4️⃣ Reverse Lunge
-MET: 6.0
-Sirve para: Fuerza unilateral + estabilidad
-Errores:
-45% paso corto
-40% rodilla colapsa
-30% torso se inclina
-Tip: paso largo atrás, talón delantero manda.
-5️⃣ Plank
-MET: 3.3
-Sirve para: Estabilidad profunda del core
-Errores:
-65% cadera cae
-50% contención de respiración
-35% cadera muy alta
-Tip: glúteos fuertes + respiración nasal.
-6️⃣ Burpee (controlado)
-MET: 9.8
-Sirve para: Condicionamiento metabólico
-Errores:
-50% lumbar colapsa
-45% espalda redondeada al bajar
-40% aterrizaje rígido
-Tip: hacerlo controlado, no explosivo.
-🔥 PLAN 8 SEMANAS – 38 MIN POR SESIÓN
-Entrenás 4 días por semana.
-Estructura fija:
-6 min warmup
-24 min bloque principal
-5 min finisher/control
-5 min cooldown
-🟢 SEMANA 1 – Foundation
-Día 1 – Push + Core
-Push Ups 3x12
-Diamond 3x8
-Plank 3x40s
-Calorías: ~360 kcal
-Día 2 – Legs
-Squat 4x15
-Reverse Lunge 3x12
-Calorías: ~340 kcal
-Día 3 – Posterior + Core
-Reverse Lunge 3x14
-Plank 3x45s
-Calorías: ~330 kcal
-Día 4 – Full Body
-Burpee 3x8
-Push Ups 3x10
-Calorías: ~400 kcal
-🟢 SEMANA 2 – +5% Volumen
-Día 1
-Push Ups 3x14
-Diamond 3x10
-Plank 3x45s
-Día 2
-Squat 4x18
-Lunge 3x14
-Día 3
-Lunge 3x16
-Plank 3x50s
-Día 4
-Burpee 3x9
-Push Ups 3x12
-🟣 SEMANA 3 – Progresión Técnica
-Tempo más lento (3-1-1)
-Día 1
-Push Ups 4x12
-Diamond 3x10
-Plank 3x50s
-Día 2
-Squat 4x18
-Lunge 4x14
-Día 3
-Lunge 3x16
-Plank 3x60s
-Día 4
-Burpee 3x10
-Push Ups 3x14
-🟡 SEMANA 4 – Deload (-30%)
-Reducís volumen.
-Día 1
-Push Ups 2x10
-Plank 2x40s
-Día 2
-Squat 3x12
-Día 3
-Lunge 2x12
-Día 4
-Burpee 2x6
-Calorías ~280–300 kcal
-🔴 SEMANA 5 – Strength Control
-Día 1
-Decline Push Ups 4x10
-Diamond 3x12
-Día 2
-Squat 4x20
-Lunge 3x16
-Día 3
-Plank 3x60s
-Día 4
-Burpee 3x10
-🔴 SEMANA 6 – Tempo + Tensión
-Push Ups 4x12 (3-1-1)
-Squat 4x18 (3-1-1)
-Plank 3x70s
-Burpee 3x10
-🔥 SEMANA 7 – High Volume
-Push Ups 5x20
+Objetivo realista en 8 semanas:
+
+- 4–6 kg menos
+- Mantener masa muscular
+- Mejorar definición
+- 38–40 min reales
+- 4 días por semana
+- Sin equipamiento
+
+Estructura fija por sesión:
+
+1. Warmup – 6 min
+2. Bloque A (Superserie) – 12 min
+3. Bloque B (Superserie) – 12 min
+4. Finisher controlado – 6 min
+5. Cooldown – 5 min
+
+Duración real: 37–40 min
+Gasto estimado: 320–450 kcal según semana.
+
+---
+
+# SEMANA 1 – Foundation
+
+## Día 1 – Push + Core
+
+Warmup (6 min)
+
+- 1 min Squats
+- 1 min Arm circles
+- 1 min Inchworm
+- 1 min Plank
+- 2 min movilidad hombros
+
+Bloque A ×4
+
+- Push Ups 12
+- Reverse Lunges 12/12
+  Descanso 40s
+
+Bloque B ×3
+
+- Diamond Push Ups 10
+- Plank 45s
+  Descanso 40s
+
+Finisher 6 min EMOM
+Min 1: 8 Burpees controlados
+Min 2: 12 Push Ups
+(3 rondas)
+
+Cooldown 5 min estiramientos pecho y piernas.
+
+---
+
+## Día 2 – Legs Dominante
+
+Warmup
+
+- 1 min Jumping jacks suaves
+- 1 min Squats
+- 1 min Lunges
+- 1 min movilidad tobillo
+- 2 min activación glúteo
+
+Bloque A ×4
+
+- Squats 18
+- Reverse Lunges 12/12
+  Descanso 45s
+
+Bloque B ×3
+
+- Squat hold 40s
+- Plank 45s
+  Descanso 40s
+
+Finisher 6 min
+
+- 10 Burpees
+- 15 Squats
+  alternado continuo
+
+Cooldown 5 min
+
+---
+
+## Día 3 – Posterior + Core
+
+Warmup
+
+- 1 min Good mornings sin peso
+- 1 min Lunges
+- 1 min Plank
+- 1 min movilidad cadera
+- 2 min activación
+
+Bloque A ×4
+
+- Reverse Lunges 14/14
+- Push Ups 12
+  Descanso 40s
+
+Bloque B ×3
+
+- Plank 60s
+- Squats 15
+  Descanso 40s
+
+Finisher 6 min
+Burpees 6 cada minuto ×6
+
+Cooldown
+
+---
+
+## Día 4 – Full Body Control
+
+Warmup dinámico
+
+Bloque A ×4
+
+- Push Ups 14
+- Squats 18
+
+Bloque B ×3
+
+- Diamond 12
+- Plank 60s
+
+Finisher 6 min continuo
+Burpee controlado 8 reps
+Reverse lunges 10/10
+Repetir circuito
+
+---
+
+# SEMANA 2 – +5% Volumen
+
+Subís reps:
+
+Push Ups +2
+Squats +3
+Lunges +2
+Plank +10s
+Burpees +1 por bloque
+
+Estructura igual.
+
+---
+
+# SEMANA 3 – Tempo Control
+
+Mismas reps que semana 2
+Pero tempo 3-1-1 en Push y Squat
+
+Plank 70s
+Burpees siguen controlados
+
+---
+
+# SEMANA 4 – Deload
+
+Reducís volumen 30%
+Quitás finisher fuerte
+Solo técnica
+
+Duración 32–35 min
+Objetivo: recuperación.
+
+---
+
+# SEMANA 5 – Strength Control
+
+Aumentás sets:
+
+Bloques A pasan a ×5
+Bloques B ×4
+
+Push Ups declinadas en Bloque A
+Lunges pausadas 1s abajo
+
+Finisher más corto pero denso
+
+---
+
+# SEMANA 6 – Tensión y Densidad
+
+Descansos bajan a 30–35s
+
+Plank 80s
+Push 4x15
 Squat 4x22
-Lunge 4x18
-Plank 3x75s
-Burpee 3x12
-Calorías ~420–450
-🔥 SEMANA 8 – Peak Control
+Burpees 10 por minuto
+
+---
+
+# SEMANA 7 – High Volume
+
+Bloque A ×5
+Bloque B ×4
+
+Push 20 reps
+Squat 25 reps
+Lunge 18/18
+Plank 90s
+
+Finisher continuo 8 min
+
+Calorías 420–450
+
+---
+
+# SEMANA 8 – Peak Control
+
 Día 1
-Push Ups 4x18
-Diamond 3x14
+Push 4x18
+Diamond 4x14
+Plank 90s
+
 Día 2
-Squat 4x22
+Squat 4x25
 Lunge 4x20
+
 Día 3
-Plank 3x80s
+Plank 100s
+Push 15
+
 Día 4
-Burpee 3x12
-Push Ups 3x20
-Calorías ~450
-**\* FIN RUTINA****\*\*\*\*******
+Circuito final 10 min continuo:
+10 Burpees
+15 Push
+20 Squats

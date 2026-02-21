@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { GlassWater, Check, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 
 interface WaterTrackerProps {
   initialGlasses?: number;
+  goal?: number;          // meta diaria de vasos (default 8)
   onUpdate: (count: number) => void;
 }
 
-const TOTAL_GLASSES = 10;
 const GLASS_VOLUME_ML = 250;
-const GOAL_VOLUME_ML = 2500;
 
 const WaterTracker: React.FC<WaterTrackerProps> = ({
   initialGlasses = 0,
+  goal = 8,
   onUpdate,
 }) => {
   const [glasses, setGlasses] = useState(initialGlasses);
@@ -32,14 +32,15 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
 
     if (navigator.vibrate) navigator.vibrate(50);
 
-    if (newCount === TOTAL_GLASSES && !showCelebration) {
+    if (newCount === goal && !showCelebration) {
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 3000);
     }
   };
 
   const currentVolume = glasses * GLASS_VOLUME_ML;
-  const progress = (currentVolume / GOAL_VOLUME_ML) * 100;
+  const goalVolume = goal * GLASS_VOLUME_ML;
+  const progress = Math.min(100, (currentVolume / goalVolume) * 100);
 
   return (
     <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5 relative overflow-hidden shadow-lg transition-all duration-300">
@@ -52,7 +53,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
             <span className="text-2xl font-black text-white leading-none">
               {(currentVolume / 1000).toFixed(2)}
             </span>
-            <span className="text-xs font-bold text-zinc-500">/ 2.5L</span>
+            <span className="text-xs font-bold text-zinc-500">/ {(goalVolume / 1000).toFixed(2)}L</span>
           </div>
         </div>
         <div className="text-right">
@@ -63,7 +64,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
       </div>
 
       <div className="flex gap-2 relative z-10 w-full justify-between items-center">
-        {Array.from({ length: TOTAL_GLASSES }).map((_, i) => {
+        {Array.from({ length: goal }).map((_, i) => {
           const isFilled = i < glasses;
           return (
             <button
@@ -88,15 +89,13 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
                   opacity: isFilled ? 1 : 0
                 }}
               />
-              {/* Bubble particles (simulated via multiple tiny divs inside liquid) */}
               {isFilled && (
                 <div className="absolute bottom-1 right-1 w-1 h-1 bg-white/40 rounded-full animate-pulse" />
               )}
               {isFilled && (
                 <div className="absolute bottom-3 left-1 w-0.5 h-0.5 bg-white/60 rounded-full animate-bounce" />
               )}
-              
-              {/* Vertical Glass Reflection */}
+              {/* Glass Reflection */}
               <div className="absolute top-[5%] left-[15%] w-[10%] h-[90%] bg-gradient-to-b from-white/30 to-transparent rounded-full blur-[1px] pointer-events-none z-10" />
               <div className="absolute top-[10%] right-[10%] w-[5%] h-[40%] bg-gradient-to-b from-white/20 to-transparent rounded-full blur-[1px] pointer-events-none z-10" />
             </button>

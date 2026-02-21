@@ -25,6 +25,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import WaterTracker from "./src/components/WaterTracker";
+import { ToastProvider, useToast } from "./src/components/Toast";
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
@@ -113,7 +114,7 @@ const AuthScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   );
 };
 type WeekLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-type Category = "push" | "legs" | "core" | "fullbody" | "rest";
+type Category = "push" | "legs" | "core" | "fullbody" | "rest" | "posterior";
 type Phase = "getReady" | "work" | "rest" | "finished";
 type Tab = "home" | "workout" | "settings";
 
@@ -143,11 +144,13 @@ interface UserData {
     day: number;
   }>;
   currentWeek: WeekLevel;
-
   dailyChecklist: { date: string; exercises: string[] };
-  waterIntake: number; // 0-10 glasses
+  waterIntake: number;
   lastWaterDate: string | null;
   theme?: "claro" | "medio" | "oscuro";
+  waterGoal: number;       // vasos por día (default 8)
+  restSeconds: number;     // segundos de descanso entre series (default 15)
+  waterHistory: Array<{ date: string; glasses: number }>;  // historial de hidratación
 }
 
 interface DailyPlan {
@@ -284,63 +287,195 @@ const EXERCISE_DB: Record<string, Exercise> = {
   decline_pushups: { id: 'decline_pushups', name: 'Decline Push Up', category: 'push', met: 6.5, steps: ['Pies elevados', 'Baja controlado', 'Empuja fuerte'], query: 'decline push ups form' },
   squats: { id: 'squats', name: 'Bodyweight Squat', category: 'legs', met: 5.5, steps: ['Peso en talones', 'Pecho abierto', 'Baja rompiendo paralelo'], query: 'bodyweight squat correct form' },
   lunges: { id: 'lunges', name: 'Reverse Lunge', category: 'legs', met: 6.0, steps: ['Paso largo atrás', 'Talón delantero manda', 'Torso recto'], query: 'reverse lunge technique' },
+  squat_hold: { id: 'squat_hold', name: 'Squat Hold', category: 'legs', met: 3.5, steps: ['Bajá a 90° y sostené', 'Peso en talones', 'Espalda recta'], query: 'squat hold isometric' },
   plank: { id: 'plank', name: 'Plank', category: 'core', met: 3.3, steps: ['Glúteos fuertes', 'Respiración nasal', 'Alineación perfecta'], query: 'perfect plank form' },
   burpees: { id: 'burpees', name: 'Burpee (controlado)', category: 'fullbody', met: 9.8, steps: ['Plancha alta', 'Sin colapsar lumbar', 'Ponte de pie sin salto'], query: 'controlled burpee form' },
+  good_mornings: { id: 'good_mornings', name: 'Good Mornings', category: 'posterior', met: 3.0, steps: ['Pies al ancho de hombros', 'Flexiona la cadera', 'Espalda recta siempre'], query: 'good mornings bodyweight' },
   rest: { id: 'rest', name: 'Descanso Activo', category: 'rest', met: 2.0, steps: ['Camina libremente', 'Respira profundo', 'Hidrátate'], query: 'active rest stretching' },
 };
 
-// --- RUTINAS INTELIGENTES ---
+// --- RUTINAS INTELIGENTES (8 semanas desde rutina.md) ---
 const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
-  // dayNumber: 1, 2, 3, 4
+  // S1 Base data
+  const S1: Record<number, { title: string; tag: string; exercises: Array<{id: string, sets: number, reps: number | string}> }> = {
+    1: { title: "Push + Core", tag: "Fuerza Base", exercises: [
+      {id: 'pushups', sets: 4, reps: 12}, {id: 'lunges', sets: 4, reps: '12/12'},
+      {id: 'diamond_pushups', sets: 3, reps: 10}, {id: 'plank', sets: 3, reps: '45s'},
+      {id: 'burpees', sets: 3, reps: 8},
+    ]},
+    2: { title: "Legs Dominante", tag: "Tren Inferior", exercises: [
+      {id: 'squats', sets: 4, reps: 18}, {id: 'lunges', sets: 4, reps: '12/12'},
+      {id: 'squat_hold', sets: 3, reps: '40s'}, {id: 'plank', sets: 3, reps: '45s'},
+      {id: 'burpees', sets: 3, reps: 10},
+    ]},
+    3: { title: "Posterior + Core", tag: "Estabilidad", exercises: [
+      {id: 'lunges', sets: 4, reps: '14/14'}, {id: 'pushups', sets: 4, reps: 12},
+      {id: 'plank', sets: 3, reps: '60s'}, {id: 'squats', sets: 3, reps: 15},
+      {id: 'burpees', sets: 6, reps: 6},
+    ]},
+    4: { title: "Full Body Control", tag: "Metabólico", exercises: [
+      {id: 'pushups', sets: 4, reps: 14}, {id: 'squats', sets: 4, reps: 18},
+      {id: 'diamond_pushups', sets: 3, reps: 12}, {id: 'plank', sets: 3, reps: '60s'},
+      {id: 'burpees', sets: 3, reps: 8},
+    ]},
+  };
+
+  // Week-specific plan builders
   const planData: Record<WeekLevel, Record<number, { title: string; tag: string; exercises: Array<{id: string, sets: number, reps: number | string}> }>> = {
-    1: {
-      1: { title: "Push + Core", tag: "Fuerza Base", exercises: [{id: 'pushups', sets: 3, reps: 12}, {id: 'diamond_pushups', sets: 3, reps: 8}, {id: 'plank', sets: 3, reps: '40s'}] },
-      2: { title: "Legs", tag: "Tren Inferior", exercises: [{id: 'squats', sets: 4, reps: 15}, {id: 'lunges', sets: 3, reps: 12}] },
-      3: { title: "Posterior + Core", tag: "Estabilidad", exercises: [{id: 'lunges', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '45s'}] },
-      4: { title: "Full Body", tag: "Metabólico", exercises: [{id: 'burpees', sets: 3, reps: 8}, {id: 'pushups', sets: 3, reps: 10}] }
-    },
+    1: S1,
+    // S2: +5% volume (+2 push, +3 squat, +2 lunge, +10s plank, +1 burpee)
     2: {
-      1: { title: "Push + Core", tag: "+5% Volumen", exercises: [{id: 'pushups', sets: 3, reps: 14}, {id: 'diamond_pushups', sets: 3, reps: 10}, {id: 'plank', sets: 3, reps: '45s'}] },
-      2: { title: "Legs", tag: "+5% Volumen", exercises: [{id: 'squats', sets: 4, reps: 18}, {id: 'lunges', sets: 3, reps: 14}] },
-      3: { title: "Posterior + Core", tag: "+5% Volumen", exercises: [{id: 'lunges', sets: 3, reps: 16}, {id: 'plank', sets: 3, reps: '50s'}] },
-      4: { title: "Full Body", tag: "+5% Volumen", exercises: [{id: 'burpees', sets: 3, reps: 9}, {id: 'pushups', sets: 3, reps: 12}] }
+      1: { title: "Push + Core", tag: "+5% Volumen", exercises: [
+        {id: 'pushups', sets: 4, reps: 14}, {id: 'lunges', sets: 4, reps: '14/14'},
+        {id: 'diamond_pushups', sets: 3, reps: 12}, {id: 'plank', sets: 3, reps: '55s'},
+        {id: 'burpees', sets: 3, reps: 9},
+      ]},
+      2: { title: "Legs Dominante", tag: "+5% Volumen", exercises: [
+        {id: 'squats', sets: 4, reps: 21}, {id: 'lunges', sets: 4, reps: '14/14'},
+        {id: 'squat_hold', sets: 3, reps: '50s'}, {id: 'plank', sets: 3, reps: '55s'},
+        {id: 'burpees', sets: 3, reps: 11},
+      ]},
+      3: { title: "Posterior + Core", tag: "+5% Volumen", exercises: [
+        {id: 'lunges', sets: 4, reps: '16/16'}, {id: 'pushups', sets: 4, reps: 14},
+        {id: 'plank', sets: 3, reps: '70s'}, {id: 'squats', sets: 3, reps: 18},
+        {id: 'burpees', sets: 6, reps: 7},
+      ]},
+      4: { title: "Full Body Control", tag: "+5% Volumen", exercises: [
+        {id: 'pushups', sets: 4, reps: 16}, {id: 'squats', sets: 4, reps: 21},
+        {id: 'diamond_pushups', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '70s'},
+        {id: 'burpees', sets: 3, reps: 9},
+      ]},
     },
+    // S3: Tempo Control — same reps as S2, plank 70s, tempo 3-1-1
     3: {
-      1: { title: "Push + Core", tag: "Progresión Técnica", exercises: [{id: 'pushups', sets: 4, reps: 12}, {id: 'diamond_pushups', sets: 3, reps: 10}, {id: 'plank', sets: 3, reps: '50s'}] },
-      2: { title: "Legs", tag: "Progresión Técnica", exercises: [{id: 'squats', sets: 4, reps: 18}, {id: 'lunges', sets: 4, reps: 14}] },
-      3: { title: "Posterior + Core", tag: "Progresión Técnica", exercises: [{id: 'lunges', sets: 3, reps: 16}, {id: 'plank', sets: 3, reps: '60s'}] },
-      4: { title: "Full Body", tag: "Progresión Técnica", exercises: [{id: 'burpees', sets: 3, reps: 10}, {id: 'pushups', sets: 3, reps: 14}] }
+      1: { title: "Push + Core", tag: "Tempo 3-1-1", exercises: [
+        {id: 'pushups', sets: 4, reps: 14}, {id: 'lunges', sets: 4, reps: '14/14'},
+        {id: 'diamond_pushups', sets: 3, reps: 12}, {id: 'plank', sets: 3, reps: '70s'},
+        {id: 'burpees', sets: 3, reps: 9},
+      ]},
+      2: { title: "Legs Dominante", tag: "Tempo 3-1-1", exercises: [
+        {id: 'squats', sets: 4, reps: 21}, {id: 'lunges', sets: 4, reps: '14/14'},
+        {id: 'squat_hold', sets: 3, reps: '50s'}, {id: 'plank', sets: 3, reps: '70s'},
+        {id: 'burpees', sets: 3, reps: 11},
+      ]},
+      3: { title: "Posterior + Core", tag: "Tempo 3-1-1", exercises: [
+        {id: 'lunges', sets: 4, reps: '16/16'}, {id: 'pushups', sets: 4, reps: 14},
+        {id: 'plank', sets: 3, reps: '70s'}, {id: 'squats', sets: 3, reps: 18},
+        {id: 'burpees', sets: 6, reps: 7},
+      ]},
+      4: { title: "Full Body Control", tag: "Tempo 3-1-1", exercises: [
+        {id: 'pushups', sets: 4, reps: 16}, {id: 'squats', sets: 4, reps: 21},
+        {id: 'diamond_pushups', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '70s'},
+        {id: 'burpees', sets: 3, reps: 9},
+      ]},
     },
+    // S4: Deload — -30% vol, no heavy finisher, technique only
     4: {
-      1: { title: "Push + Core", tag: "Deload", exercises: [{id: 'pushups', sets: 2, reps: 10}, {id: 'plank', sets: 2, reps: '40s'}] },
-      2: { title: "Legs", tag: "Deload", exercises: [{id: 'squats', sets: 3, reps: 12}] },
-      3: { title: "Posterior + Core", tag: "Deload", exercises: [{id: 'lunges', sets: 2, reps: 12}] },
-      4: { title: "Full Body", tag: "Deload", exercises: [{id: 'burpees', sets: 2, reps: 6}] }
+      1: { title: "Push + Core", tag: "Deload", exercises: [
+        {id: 'pushups', sets: 3, reps: 10}, {id: 'lunges', sets: 3, reps: '10/10'},
+        {id: 'plank', sets: 2, reps: '40s'},
+      ]},
+      2: { title: "Legs Dominante", tag: "Deload", exercises: [
+        {id: 'squats', sets: 3, reps: 14}, {id: 'lunges', sets: 3, reps: '10/10'},
+        {id: 'squat_hold', sets: 2, reps: '30s'},
+      ]},
+      3: { title: "Posterior + Core", tag: "Deload", exercises: [
+        {id: 'lunges', sets: 3, reps: '10/10'}, {id: 'pushups', sets: 3, reps: 10},
+        {id: 'plank', sets: 2, reps: '45s'},
+      ]},
+      4: { title: "Full Body Control", tag: "Deload", exercises: [
+        {id: 'pushups', sets: 3, reps: 10}, {id: 'squats', sets: 3, reps: 14},
+        {id: 'plank', sets: 2, reps: '40s'},
+      ]},
     },
+    // S5: Strength Control — A×5, B×4, decline pushups, lunges pausadas
     5: {
-      1: { title: "Push + Core", tag: "Strength Control", exercises: [{id: 'decline_pushups', sets: 4, reps: 10}, {id: 'diamond_pushups', sets: 3, reps: 12}] },
-      2: { title: "Legs", tag: "Strength Control", exercises: [{id: 'squats', sets: 4, reps: 20}, {id: 'lunges', sets: 3, reps: 16}] },
-      3: { title: "Posterior + Core", tag: "Strength Control", exercises: [{id: 'plank', sets: 3, reps: '60s'}] },
-      4: { title: "Full Body", tag: "Strength Control", exercises: [{id: 'burpees', sets: 3, reps: 10}] }
+      1: { title: "Push + Core", tag: "Strength Control", exercises: [
+        {id: 'decline_pushups', sets: 5, reps: 12}, {id: 'lunges', sets: 5, reps: '14/14'},
+        {id: 'diamond_pushups', sets: 4, reps: 12}, {id: 'plank', sets: 4, reps: '60s'},
+        {id: 'burpees', sets: 3, reps: 10},
+      ]},
+      2: { title: "Legs Dominante", tag: "Strength Control", exercises: [
+        {id: 'squats', sets: 5, reps: 20}, {id: 'lunges', sets: 5, reps: '16/16'},
+        {id: 'squat_hold', sets: 4, reps: '50s'}, {id: 'plank', sets: 4, reps: '60s'},
+        {id: 'burpees', sets: 3, reps: 10},
+      ]},
+      3: { title: "Posterior + Core", tag: "Strength Control", exercises: [
+        {id: 'lunges', sets: 5, reps: '16/16'}, {id: 'pushups', sets: 5, reps: 14},
+        {id: 'plank', sets: 4, reps: '70s'}, {id: 'squats', sets: 4, reps: 18},
+        {id: 'burpees', sets: 3, reps: 8},
+      ]},
+      4: { title: "Full Body Control", tag: "Strength Control", exercises: [
+        {id: 'decline_pushups', sets: 5, reps: 14}, {id: 'squats', sets: 5, reps: 20},
+        {id: 'diamond_pushups', sets: 4, reps: 14}, {id: 'plank', sets: 4, reps: '70s'},
+        {id: 'burpees', sets: 3, reps: 10},
+      ]},
     },
+    // S6: Tensión y Densidad — descansos 30-35s, push 15, squat 22, plank 80s, burpees 10/min
     6: {
-      1: { title: "Push + Core", tag: "Tempo + Tensión", exercises: [{id: 'pushups', sets: 4, reps: 12}, {id: 'plank', sets: 3, reps: '70s'}] },
-      2: { title: "Legs", tag: "Tempo + Tensión", exercises: [{id: 'squats', sets: 4, reps: 18}] },
-      3: { title: "Posterior + Core", tag: "Tempo + Tensión", exercises: [{id: 'plank', sets: 3, reps: '70s'}] },
-      4: { title: "Full Body", tag: "Tempo + Tensión", exercises: [{id: 'burpees', sets: 3, reps: 10}] }
+      1: { title: "Push + Core", tag: "Tensión + Densidad", exercises: [
+        {id: 'pushups', sets: 4, reps: 15}, {id: 'lunges', sets: 4, reps: '16/16'},
+        {id: 'diamond_pushups', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '80s'},
+        {id: 'burpees', sets: 3, reps: 10},
+      ]},
+      2: { title: "Legs Dominante", tag: "Tensión + Densidad", exercises: [
+        {id: 'squats', sets: 4, reps: 22}, {id: 'lunges', sets: 4, reps: '16/16'},
+        {id: 'squat_hold', sets: 3, reps: '60s'}, {id: 'plank', sets: 3, reps: '80s'},
+        {id: 'burpees', sets: 3, reps: 10},
+      ]},
+      3: { title: "Posterior + Core", tag: "Tensión + Densidad", exercises: [
+        {id: 'lunges', sets: 4, reps: '18/18'}, {id: 'pushups', sets: 4, reps: 15},
+        {id: 'plank', sets: 3, reps: '80s'}, {id: 'squats', sets: 3, reps: 22},
+        {id: 'burpees', sets: 6, reps: 10},
+      ]},
+      4: { title: "Full Body Control", tag: "Tensión + Densidad", exercises: [
+        {id: 'pushups', sets: 4, reps: 15}, {id: 'squats', sets: 4, reps: 22},
+        {id: 'diamond_pushups', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '80s'},
+        {id: 'burpees', sets: 3, reps: 10},
+      ]},
     },
+    // S7: High Volume — A×5, B×4, push 20, squat 25, lunge 18/18, plank 90s
     7: {
-      1: { title: "Push + Core", tag: "High Volume", exercises: [{id: 'pushups', sets: 5, reps: 20}, {id: 'plank', sets: 3, reps: '75s'}] },
-      2: { title: "Legs", tag: "High Volume", exercises: [{id: 'squats', sets: 4, reps: 22}, {id: 'lunges', sets: 4, reps: 18}] },
-      3: { title: "Posterior + Core", tag: "High Volume", exercises: [{id: 'plank', sets: 3, reps: '75s'}] },
-      4: { title: "Full Body", tag: "High Volume", exercises: [{id: 'burpees', sets: 3, reps: 12}] }
+      1: { title: "Push + Core", tag: "High Volume", exercises: [
+        {id: 'pushups', sets: 5, reps: 20}, {id: 'lunges', sets: 5, reps: '18/18'},
+        {id: 'diamond_pushups', sets: 4, reps: 16}, {id: 'plank', sets: 4, reps: '90s'},
+        {id: 'burpees', sets: 4, reps: 10},
+      ]},
+      2: { title: "Legs Dominante", tag: "High Volume", exercises: [
+        {id: 'squats', sets: 5, reps: 25}, {id: 'lunges', sets: 5, reps: '18/18'},
+        {id: 'squat_hold', sets: 4, reps: '60s'}, {id: 'plank', sets: 4, reps: '90s'},
+        {id: 'burpees', sets: 4, reps: 10},
+      ]},
+      3: { title: "Posterior + Core", tag: "High Volume", exercises: [
+        {id: 'lunges', sets: 5, reps: '18/18'}, {id: 'pushups', sets: 5, reps: 20},
+        {id: 'plank', sets: 4, reps: '90s'}, {id: 'squats', sets: 4, reps: 25},
+        {id: 'burpees', sets: 4, reps: 10},
+      ]},
+      4: { title: "Full Body Control", tag: "High Volume", exercises: [
+        {id: 'pushups', sets: 5, reps: 20}, {id: 'squats', sets: 5, reps: 25},
+        {id: 'diamond_pushups', sets: 4, reps: 16}, {id: 'plank', sets: 4, reps: '90s'},
+        {id: 'burpees', sets: 4, reps: 12},
+      ]},
     },
+    // S8: Peak Control — specific per day from rutina.md
     8: {
-      1: { title: "Push + Core", tag: "Peak Control", exercises: [{id: 'pushups', sets: 4, reps: 18}, {id: 'diamond_pushups', sets: 3, reps: 14}] },
-      2: { title: "Legs", tag: "Peak Control", exercises: [{id: 'squats', sets: 4, reps: 22}, {id: 'lunges', sets: 4, reps: 20}] },
-      3: { title: "Posterior + Core", tag: "Peak Control", exercises: [{id: 'plank', sets: 3, reps: '80s'}] },
-      4: { title: "Full Body", tag: "Peak Control", exercises: [{id: 'burpees', sets: 3, reps: 12}, {id: 'pushups', sets: 3, reps: 20}] }
-    }
+      1: { title: "Push + Core", tag: "Peak Control", exercises: [
+        {id: 'pushups', sets: 4, reps: 18}, {id: 'diamond_pushups', sets: 4, reps: 14},
+        {id: 'plank', sets: 3, reps: '90s'}, {id: 'burpees', sets: 3, reps: 10},
+      ]},
+      2: { title: "Legs Dominante", tag: "Peak Control", exercises: [
+        {id: 'squats', sets: 4, reps: 25}, {id: 'lunges', sets: 4, reps: '20/20'},
+        {id: 'squat_hold', sets: 3, reps: '60s'}, {id: 'plank', sets: 3, reps: '90s'},
+      ]},
+      3: { title: "Posterior + Core", tag: "Peak Control", exercises: [
+        {id: 'plank', sets: 3, reps: '100s'}, {id: 'pushups', sets: 4, reps: 15},
+        {id: 'lunges', sets: 4, reps: '18/18'}, {id: 'squats', sets: 3, reps: 20},
+      ]},
+      4: { title: "Full Body Final", tag: "Peak Control", exercises: [
+        {id: 'burpees', sets: 4, reps: 10}, {id: 'pushups', sets: 4, reps: 15},
+        {id: 'squats', sets: 4, reps: 20}, {id: 'plank', sets: 3, reps: '90s'},
+      ]},
+    },
   };
   
   const weekData = planData[week];
@@ -501,6 +636,7 @@ interface WorkoutScreenProps {
   day: number;
   onExit: () => void;
   onComplete: (calories: number) => void;
+  restSeconds: number;
 }
 
 const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
@@ -508,6 +644,7 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   day,
   onExit,
   onComplete,
+  restSeconds,
 }) => {
   const workoutPlan = useMemo(
     () => getDailyPlan(week, day),
@@ -515,10 +652,11 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   );
   const theme = THEMES[week];
 
-  const settings = { work: 45, rest: 15 };
+  const WORK_SECONDS = 45;
 
   const [phase, setPhase] = useState<Phase>("getReady");
   const [currentExIndex, setCurrentExIndex] = useState(0);
+  const [currentSet, setCurrentSet] = useState(1);
   const [timeLeft, setTimeLeft] = useState(10);
   const [isActive, setIsActive] = useState(true);
   const [kcal, setKcal] = useState(0);
@@ -559,39 +697,68 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
 
-    // Timer only runs if isActive is true AND no modals are open (guide or exit confirm)
     const isPausedByModal = showGuide || showExitConfirm;
+    const ex = workoutPlan.exercises[currentExIndex];
+    const totalSets = typeof ex?.sets === 'number' ? ex.sets : 1;
 
     if (isActive && timeLeft > 0 && !isPausedByModal && phase !== "finished") {
       interval = setInterval(() => {
         setTimeLeft((t) => {
           const nextTime = t - 1;
-
-          // Audio Feedback Logic
           if (phase === "work") {
             if (nextTime < 10 && nextTime > 0) {
-              // Descending subtle tone: Pitch drops as time drops
-              // 9s -> 850Hz, 1s -> 450Hz
               const pitch = 400 + nextTime * 50;
               playTone(pitch, "sine", 0.15, 0.05);
             }
           } else {
-            // Standard countdown for Rest/GetReady
             if (nextTime <= 3 && nextTime > 0) {
               playTone(600, "square", 0.1, 0.1);
             }
           }
-
           return nextTime;
         });
-
-        if (phase === "work") {
-          const ex = workoutPlan.exercises[currentExIndex];
+        if (phase === "work" && ex) {
           setKcal((k) => k + (ex.met * 3.5 * USER_WEIGHT_KG) / 200 / 60);
         }
       }, 1000);
     } else if (timeLeft === 0 && !isPausedByModal && phase !== "finished") {
-      handlePhaseChange();
+      // --- Phase transitions ---
+      if (phase === "getReady") {
+        setPhase("work");
+        setTimeLeft(WORK_SECONDS);
+        playTone(880, "square", 0.3, 0.1);
+        triggerHaptic(50);
+      } else if (phase === "work") {
+        // Always go to rest unless it's the very last set of the last exercise
+        if (currentSet < totalSets || currentExIndex < workoutPlan.exercises.length - 1) {
+          setPhase("rest");
+          setTimeLeft(restSeconds);
+          playTone(1500, "triangle", 0.1, 0.1);
+          triggerHaptic(50);
+        } else {
+          // Last set of last exercise → finished
+          setPhase("finished");
+          playTone(880, "square", 0.1, 0.1);
+          setTimeout(() => playTone(1100, "square", 0.2, 0.1), 150);
+          triggerHaptic([50, 50, 50]);
+          onComplete(Math.ceil(kcal));
+        }
+      } else if (phase === "rest") {
+        if (currentSet < totalSets) {
+          // Next set of same exercise
+          setCurrentSet((s) => s + 1);
+          setPhase("work");
+          setTimeLeft(WORK_SECONDS);
+        } else {
+          // All sets done → move to next exercise now (at end of rest)
+          setCurrentExIndex((p) => p + 1);
+          setCurrentSet(1);
+          setPhase("work");
+          setTimeLeft(WORK_SECONDS);
+        }
+        playTone(880, "square", 0.3, 0.1);
+        triggerHaptic(50);
+      }
     }
 
     return () => {
@@ -601,45 +768,15 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
     isActive,
     timeLeft,
     phase,
+    currentSet,
+    currentExIndex,
     showGuide,
     showExitConfirm,
     workoutPlan.exercises,
-    currentExIndex,
-  ]);
-
-  const handlePhaseChange = useCallback(() => {
-    if (phase === "getReady") {
-      setPhase("work");
-      setTimeLeft(settings.work);
-      playTone(880, "square", 0.3, 0.1); // Strong Start
-      triggerHaptic(50);
-    } else if (phase === "work") {
-      if (currentExIndex < workoutPlan.exercises.length - 1) {
-        setPhase("rest");
-        setTimeLeft(settings.rest);
-        playTone(1500, "triangle", 0.1, 0.1); // Short Sharp Confirmation for Rest
-        triggerHaptic(50);
-      } else {
-        setPhase("finished");
-        playTone(880, "square", 0.1, 0.1);
-        setTimeout(() => playTone(1100, "square", 0.2, 0.1), 150);
-        triggerHaptic([50, 50, 50]);
-        onComplete(Math.ceil(kcal));
-      }
-    } else if (phase === "rest") {
-      setPhase("work");
-      setCurrentExIndex((p) => p + 1);
-      setTimeLeft(settings.work);
-      playTone(880, "square", 0.3, 0.1); // Back to Work
-      triggerHaptic(50);
-    }
-  }, [
-    phase,
-    currentExIndex,
-    workoutPlan.exercises.length,
-    settings,
     kcal,
     onComplete,
+    WORK_SECONDS,
+    restSeconds,
   ]);
 
   const handleSkip = () => {
@@ -648,9 +785,15 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   };
 
   const handlePrev = () => {
-    triggerHaptic(15); // Click feel
-    if (currentExIndex > 0) {
+    triggerHaptic(15);
+    if (currentSet > 1) {
+      setCurrentSet((s) => s - 1);
+      setPhase("work");
+      setTimeLeft(WORK_SECONDS);
+      setIsActive(true);
+    } else if (currentExIndex > 0) {
       setCurrentExIndex((p) => p - 1);
+      setCurrentSet(1);
       setPhase("getReady");
       setTimeLeft(10);
       setIsActive(true);
@@ -719,18 +862,17 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   const ex = workoutPlan.exercises[currentExIndex];
   const nextEx = workoutPlan.exercises[currentExIndex + 1];
   const isResting = phase === "rest" || phase === "getReady";
+  const totalSetsForEx = typeof ex?.sets === 'number' ? ex.sets : 1;
+  // Is this a transition rest? (completed all sets, about to move to next exercise)
+  const isTransitionRest = phase === "rest" && currentSet >= totalSetsForEx;
   const totalDuration =
     phase === "getReady"
       ? 10
       : phase === "work"
-        ? settings.work
-        : settings.rest;
+        ? WORK_SECONDS
+        : restSeconds;
   const pct = ((totalDuration - timeLeft) / totalDuration) * 100;
-  const activeModalExercise = isResting
-    ? phase === "getReady"
-      ? ex
-      : nextEx || ex
-    : ex;
+  const activeModalExercise = isTransitionRest ? (nextEx || ex) : ex;
 
   // Get random tip for current exercise index
   const currentTip = sessionTips[currentExIndex % sessionTips.length];
@@ -875,10 +1017,8 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
         <div className="text-center w-full max-w-sm flex flex-col items-center animate-in slide-in-from-bottom-4 fade-in duration-500 px-4 mb-4 landscape:mb-8">
           <div className="flex flex-col items-center justify-center gap-3 mb-2 w-full relative px-2">
             <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight text-center line-clamp-2">
-              {isResting
-                ? phase === "getReady"
-                  ? ex.name
-                  : nextEx?.name || "FIN"
+              {isTransitionRest
+                ? nextEx?.name || "FIN"
                 : ex.name}
             </h2>
             
@@ -886,13 +1026,16 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
               {/* Sets & Reps Details */}
               {(!isResting || phase === "getReady") && (
                  <div className="text-emerald-400 font-bold tracking-widest text-sm uppercase px-4 py-1.5 bg-emerald-900/40 rounded-full border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                   {ex.sets} Sets × {ex.reps === "Libre" ? "Libre" : `${ex.reps} Reps`}
+                   Serie {currentSet}/{ex.sets} · {ex.reps === "Libre" ? "Libre" : `${ex.reps} Reps`}
                  </div>
               )}
-              {isResting && phase === "rest" && nextEx && (
-                 <div className="text-emerald-400 font-bold tracking-widest text-sm uppercase px-4 py-1.5 bg-emerald-900/40 rounded-full border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                   Sgte: {nextEx.sets} Sets × {nextEx.reps === "Libre" ? "Libre" : `${nextEx.reps} Reps`}
-                 </div>
+              {isResting && phase === "rest" && (
+                <div className="text-emerald-400 font-bold tracking-widest text-sm uppercase px-4 py-1.5 bg-emerald-900/40 rounded-full border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                  {isTransitionRest && nextEx
+                    ? `Serie 1/${nextEx.sets} · ${nextEx.reps === "Libre" ? "Libre" : `${nextEx.reps} Reps`}`
+                    : `Serie ${currentSet}/${ex.sets} · ${ex.reps === "Libre" ? "Libre" : `${ex.reps} Reps`}`
+                  }
+                </div>
               )}
 
               <button
@@ -905,25 +1048,6 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
                 <Info size={18} className={theme.text} />
               </button>
             </div>
-
-            {/* Custom Timer Adjustments during rest - Positioned cleanly below text */}
-            {phase === "rest" && (
-              <div className="flex gap-6 mt-4 justify-center items-center w-full z-30 pointer-events-auto">
-                <button
-                  disabled={timeLeft <= 15}
-                  onClick={(e) => { e.stopPropagation(); setTimeLeft(t => Math.max(1, t - 15)); triggerHaptic(10); }}
-                  className="w-14 h-10 rounded-xl bg-zinc-900 border border-zinc-700 font-black text-xs text-white shadow-xl active:scale-90 transition-transform hover:bg-zinc-800 disabled:opacity-30 flex items-center justify-center"
-                >
-                  -15s
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setTimeLeft(t => t + 15); triggerHaptic(10); }}
-                  className="w-14 h-10 rounded-xl bg-zinc-900 border border-zinc-700 font-black text-xs text-white shadow-xl active:scale-90 transition-transform hover:bg-zinc-800 flex items-center justify-center"
-                >
-                  +15s
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="h-12 flex items-center justify-center">
@@ -932,9 +1056,11 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
             >
               "
               {isResting
-                ? nextEx
-                  ? "Prepárate para el siguiente"
-                  : "¡Casi terminamos!"
+                ? isTransitionRest
+                  ? nextEx
+                    ? "Prepárate para el siguiente"
+                    : "¡Casi terminamos!"
+                  : "Descansá, viene la siguiente serie"
                 : currentTip}
               "
             </p>
@@ -974,15 +1100,14 @@ const TrainingView: React.FC<{
   setDay: (d: number) => void;
   userData: UserData;
   onToggleCheck: (exName: string) => void;
-}> = ({ week, setWeek, day, setDay, userData, onToggleCheck }) => {
+  onResetDay: () => void;
+}> = ({ week, setWeek, day, setDay, userData, onToggleCheck, onResetDay }) => {
   const dailyPlan = useMemo(() => getDailyPlan(week, day), [week, day]);
   const theme = THEMES[week];
   const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
 
   const isRoutineComplete = useMemo(() => {
-    if (userData.history.length === 0) return false;
-    const todayIso = new Date().toISOString().split('T')[0];
-    return userData.history.some(h => h.week === week && h.day === day && h.date.split('T')[0] === todayIso);
+    return userData.history.some(h => h.week === week && h.day === day);
   }, [userData.history, week, day]);
 
   return (
@@ -1023,8 +1148,8 @@ const TrainingView: React.FC<{
         <div className="absolute top-1/2 left-6 right-6 h-1.5 -translate-y-1/2 bg-zinc-900 border-y border-zinc-800 z-0 rounded-full" />
         
         {[1, 2, 3, 4].map((d) => {
-          const todayIso = new Date().toISOString().split('T')[0];
-          const isDayComp = userData.history.some(h => h.week === week && h.day === d && h.date.split('T')[0] === todayIso);
+          // Completed = any time this week+day appears in history (any date)
+          const isDayComp = userData.history.some(h => h.week === week && h.day === d);
           const isSelected = day === d;
           
           return (
@@ -1056,9 +1181,11 @@ const TrainingView: React.FC<{
               </span>
               <h3 className="text-3xl sm:text-4xl font-black text-white mb-2 leading-none uppercase tracking-tight">{dailyPlan.title}</h3>
               <p className="text-zinc-400 text-xs font-bold mb-6 flex items-center justify-center gap-2">
-                 <Clock size={12} className="text-zinc-500"/> ~25 MIN
+                 <Clock size={12} className="text-zinc-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (typeof ex.sets === 'number' ? ex.sets : 1) * 45 / 60, 0) + dailyPlan.exercises.length * 15 / 60)} MIN
                  <span className="text-zinc-700">•</span>
                  <Target size={12} className="text-zinc-500"/> {dailyPlan.exercises.length} EJERCICIOS
+                 <span className="text-zinc-700">•</span>
+                 <Flame size={12} className="text-orange-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0))} kcal
               </p>
 
               {/* Compact List inside Card */}
@@ -1069,9 +1196,15 @@ const TrainingView: React.FC<{
                       <div className="w-14 h-14 bg-emerald-500/20 rounded-full flex items-center justify-center mb-2">
                         <Check className="w-8 h-8 text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)]" strokeWidth={3} />
                       </div>
-                      <h3 className="text-xl font-black text-white px-2 text-center tracking-tighter uppercase drop-shadow-md">
+                      <h3 className="text-xl font-black text-white px-2 text-center tracking-tighter uppercase drop-shadow-md mb-3">
                         ¡Completado!
                       </h3>
+                      <button
+                        onClick={onResetDay}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-zinc-800/80 text-zinc-300 border border-zinc-600 rounded-xl text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform hover:bg-zinc-700"
+                      >
+                        <RotateCcw size={14} /> Reiniciar Día
+                      </button>
                     </div>
                   )}
 
@@ -1168,6 +1301,7 @@ const StatsView: React.FC<{
       <div className="mb-8">
         <WaterTracker
           initialGlasses={userData.waterIntake}
+          goal={userData.waterGoal ?? 8}
           onUpdate={onWaterUpdate}
         />
       </div>
@@ -1194,7 +1328,9 @@ const StatsView: React.FC<{
             </span>
           </div>
           <div className="text-xl font-black text-white">
-            {(userData.totalCalories / 1000).toFixed(1)}k
+            {userData.totalCalories >= 1000
+              ? `${(userData.totalCalories / 1000).toFixed(1)}k`
+              : Math.round(userData.totalCalories)}
           </div>
         </div>
 
@@ -1334,6 +1470,33 @@ const StatsView: React.FC<{
                     <span className="text-orange-500 font-black text-3xl leading-none">{Math.ceil(selectedEntry.calories)}<span className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest ml-1">kcal</span></span>
                  </div>
                </div>
+               {/* Hydration row */}
+               {(() => {
+                 const entryDateIso = new Date(selectedEntry.date).toISOString().split('T')[0];
+                 const waterGoal = userData.waterGoal ?? 8;
+                 // Check today vs entry date
+                 const todayIso = new Date().toISOString().split('T')[0];
+                 const isToday = entryDateIso === todayIso;
+                 const waterRecord = isToday
+                   ? { glasses: userData.waterIntake }
+                   : (userData.waterHistory ?? []).find(w => w.date === entryDateIso);
+                 if (!waterRecord) return null;
+                 const done = waterRecord.glasses >= waterGoal;
+                 return (
+                   <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                     done
+                       ? 'bg-emerald-500/10 border-emerald-500/30'
+                       : 'bg-red-500/10 border-red-500/30'
+                   }`}>
+                     <span className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">Hidratación</span>
+                     <span className={`font-black text-sm ${
+                       done ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'text-red-400'
+                     }`}>
+                       {waterRecord.glasses}/{waterGoal} vasos — {done ? 'Completo ✓' : 'Incompleto'}
+                     </span>
+                   </div>
+                 );
+               })()}
             </div>
           </div>
         </div>
@@ -1348,10 +1511,13 @@ const SettingsView: React.FC<{
   userData: UserData;
   setUserData: React.Dispatch<React.SetStateAction<UserData>>;
 }> = ({ userData, setUserData }) => {
+  const toast = useToast();
   const currentTheme = userData.theme || "oscuro";
+  const currentWaterGoal = userData.waterGoal ?? 8;
+  const currentRestSeconds = userData.restSeconds ?? 15;
 
   const resetRoutine = () => {
-    if (window.confirm("¿Estás 100% seguro de que deseas resetear tu progreso entero de 8 semanas? Esto borrará tus kilocalorías, racha y días.")) {
+    toast.confirm("¿Estás 100% seguro? Se borrará todo tu progreso de 8 semanas.", () => {
       setUserData(prev => ({ 
         ...prev, 
         history: [], 
@@ -1362,7 +1528,8 @@ const SettingsView: React.FC<{
         totalCalories: 0,
         lastWorkoutDate: null
       }));
-    }
+      toast.show('Progreso reiniciado', 'success');
+    }, { type: 'error', confirmText: 'Resetear Todo', cancelText: 'Cancelar' });
   };
 
   return (
@@ -1379,6 +1546,49 @@ const SettingsView: React.FC<{
         </div>
       </div>
 
+      {/* Water Goal Setting */}
+      <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 mb-6 shadow-lg">
+        <h3 className="text-sm uppercase tracking-widest text-zinc-400 font-bold mb-1">Meta de Hidratación</h3>
+        <p className="text-zinc-600 text-xs mb-4">Vasos de agua por día (1 vaso = 250ml)</p>
+        <div className="flex gap-2 justify-center flex-wrap">
+          {[6, 7, 8, 9, 10].map(n => (
+            <button
+              key={n}
+              onClick={() => setUserData(p => ({ ...p, waterGoal: n }))}
+              className={`w-12 h-12 rounded-xl font-black text-base transition-all ${
+                currentWaterGoal === n
+                  ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.4)]'
+                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <p className="text-zinc-600 text-[10px] mt-3 text-center">Meta actual: {currentWaterGoal} vasos = {(currentWaterGoal * 0.25).toFixed(2)}L</p>
+      </div>
+
+      {/* Rest Seconds Setting */}
+      <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 mb-6 shadow-lg">
+        <h3 className="text-sm uppercase tracking-widest text-zinc-400 font-bold mb-1">Descanso entre series</h3>
+        <p className="text-zinc-600 text-xs mb-4">Segundos de pausa entre cada serie</p>
+        <div className="flex gap-2 justify-center">
+          {[10, 15, 20, 30].map(s => (
+            <button
+              key={s}
+              onClick={() => setUserData(p => ({ ...p, restSeconds: s }))}
+              className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${
+                currentRestSeconds === s
+                  ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+              }`}
+            >
+              {s}s
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-red-950/20 p-6 rounded-2xl border border-red-900/50 mt-12 shadow-inner">
         <h3 className="text-lg font-bold text-red-500 mb-2">Zona de Peligro</h3>
         <p className="text-xs text-red-400/70 mb-6">Reiniciar la rutina borrará tu progreso actual y recomenzará tu viaje en CalisHome.</p>
@@ -1391,7 +1601,8 @@ const SettingsView: React.FC<{
 };
 
 // --- MAIN APP COMPONENT ---
-const App: React.FC = () => {
+const AppInner: React.FC = () => {
+  const toast = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [week, setWeek] = useState<WeekLevel>(1);
@@ -1401,7 +1612,13 @@ const App: React.FC = () => {
     const saved = localStorage.getItem("chronos_v8_data");
     const parsed = saved ? JSON.parse(saved) : null;
     return parsed
-      ? { ...parsed, currentWeek: parsed.currentWeek || 1 }
+      ? {
+          ...parsed,
+          currentWeek: parsed.currentWeek || 1,
+          waterGoal: parsed.waterGoal ?? 8,
+          restSeconds: parsed.restSeconds ?? 15,
+          waterHistory: parsed.waterHistory ?? [],
+        }
       : {
           streak: 0,
           totalWorkouts: 0,
@@ -1412,6 +1629,9 @@ const App: React.FC = () => {
           dailyChecklist: { date: new Date().toDateString(), exercises: [] },
           waterIntake: 0,
           lastWaterDate: new Date().toDateString(),
+          waterGoal: 8,
+          restSeconds: 15,
+          waterHistory: [],
         };
   });
 
@@ -1482,17 +1702,27 @@ const App: React.FC = () => {
   const handleWorkoutComplete = (calories: number) => {
     const today = new Date().toDateString();
     
-    let nextDay = day + 1;
-    let nextWeek = week;
-    if (nextDay > 4) {
-      nextDay = 1;
-      if (nextWeek < 8) nextWeek = (nextWeek + 1) as WeekLevel;
-    }
-    setDay(nextDay);
-    setWeek(nextWeek);
+    // Only advance day (not week). Week advances when all 4 days are complete.
+    let nextDay = day < 4 ? day + 1 : day;
 
     setUserData((prev) => {
       const isNewDay = prev.lastWorkoutDate !== today;
+      const newHistory = [
+        ...prev.history,
+        { date: new Date().toISOString(), calories, week, day },
+      ];
+
+      // Check if all 4 days of current week are now complete
+      const completedDays = new Set(newHistory.filter(h => h.week === week).map(h => h.day));
+      let nextWeek = week;
+      if (completedDays.size >= 4 && week < 8) {
+        nextWeek = (week + 1) as WeekLevel;
+        nextDay = 1; // reset to day 1 of new week
+      }
+
+      setDay(nextDay);
+      setWeek(nextWeek);
+
       return {
         ...prev,
         currentWeek: nextWeek,
@@ -1500,10 +1730,7 @@ const App: React.FC = () => {
         totalWorkouts: prev.totalWorkouts + 1,
         totalCalories: prev.totalCalories + calories,
         lastWorkoutDate: today,
-        history: [
-          ...prev.history,
-          { date: new Date().toISOString(), calories, week, day },
-        ],
+        history: newHistory,
       };
     });
     setIsWorkoutMode(false);
@@ -1512,6 +1739,12 @@ const App: React.FC = () => {
 
   const toggleChecklist = (exName: string) => {
     const today = new Date().toDateString();
+    const plan = getDailyPlan(week, day);
+    const estimatedKcal = Math.round(
+      plan.exercises.reduce((sum, ex) =>
+        sum + (ex.met * 3.5 * USER_WEIGHT_KG / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0)
+    );
+
     setUserData((prev) => {
       const isSameDay = prev.dailyChecklist.date === today;
       let currentList = isSameDay ? prev.dailyChecklist.exercises : [];
@@ -1522,6 +1755,24 @@ const App: React.FC = () => {
         currentList = [...currentList, exName];
       }
 
+      // Check if ALL exercises are now manually completed
+      const allChecked = plan.exercises.every(ex => currentList.includes(ex.name));
+      // Only add history entry once (not if already recorded for this week+day)
+      const alreadyRecorded = prev.history.some(h => h.week === week && h.day === day);
+
+      if (allChecked && !alreadyRecorded) {
+        const isNewDay = prev.lastWorkoutDate !== today;
+        return {
+          ...prev,
+          dailyChecklist: { date: today, exercises: currentList },
+          history: [...prev.history, { date: new Date().toISOString(), calories: estimatedKcal, week, day }],
+          totalCalories: prev.totalCalories + estimatedKcal,
+          totalWorkouts: prev.totalWorkouts + 1,
+          streak: isNewDay ? prev.streak + 1 : prev.streak,
+          lastWorkoutDate: today,
+        };
+      }
+
       return {
         ...prev,
         dailyChecklist: { date: today, exercises: currentList },
@@ -1530,11 +1781,42 @@ const App: React.FC = () => {
   };
 
   const handleWaterUpdate = (count: number) => {
-    setUserData((prev) => ({
-      ...prev,
-      waterIntake: count,
-      lastWaterDate: new Date().toDateString(),
-    }));
+    const today = new Date().toDateString();
+    setUserData((prev) => {
+      const updates: Partial<UserData> = {
+        waterIntake: count,
+        lastWaterDate: today,
+      };
+      // Si cambió el día desde la última actualiza, guarda el registro anterior en waterHistory
+      if (prev.lastWaterDate && prev.lastWaterDate !== today && prev.waterIntake > 0) {
+        const dateIso = new Date(prev.lastWaterDate).toISOString().split('T')[0];
+        const alreadySaved = (prev.waterHistory ?? []).some(w => w.date === dateIso);
+        if (!alreadySaved) {
+          updates.waterHistory = [
+            ...(prev.waterHistory ?? []),
+            { date: dateIso, glasses: prev.waterIntake },
+          ];
+        }
+      }
+      return { ...prev, ...updates };
+    });
+  };
+
+  const handleResetDay = () => {
+    toast.confirm(`¿Reiniciar Día ${day} de Semana ${week}?`, () => {
+      setUserData((prev) => {
+        const entry = prev.history.find(h => h.week === week && h.day === day);
+        const caloriesToRemove = entry ? entry.calories : 0;
+        return {
+          ...prev,
+          history: prev.history.filter(h => !(h.week === week && h.day === day)),
+          totalCalories: Math.max(0, prev.totalCalories - caloriesToRemove),
+          totalWorkouts: Math.max(0, prev.totalWorkouts - 1),
+          dailyChecklist: { date: new Date().toDateString(), exercises: [] },
+        };
+      });
+      toast.show('Día reiniciado correctamente', 'success');
+    }, { confirmText: 'Reiniciar', cancelText: 'Cancelar' });
   };
 
   if (!isAuthenticated) {
@@ -1548,6 +1830,7 @@ const App: React.FC = () => {
         day={day}
         onExit={() => setIsWorkoutMode(false)}
         onComplete={handleWorkoutComplete}
+        restSeconds={userData.restSeconds ?? 15}
       />
     );
   }
@@ -1599,6 +1882,7 @@ const App: React.FC = () => {
                 setDay={setDay}
                 userData={userData}
                 onToggleCheck={toggleChecklist}
+                onResetDay={handleResetDay}
               />
             )}
             
@@ -1618,4 +1902,10 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+const AppWrapper: React.FC = () => (
+  <ToastProvider>
+    <AppInner />
+  </ToastProvider>
+);
+
+export default AppWrapper;
