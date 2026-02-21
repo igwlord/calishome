@@ -23,6 +23,7 @@ import {
   Layers,
   Check,
   AlertTriangle,
+  RefreshCw
 } from "lucide-react";
 import WaterTracker from "./src/components/WaterTracker";
 import { ToastProvider, useToast } from "./src/components/Toast";
@@ -114,7 +115,7 @@ const AuthScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   );
 };
 type WeekLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-type Category = "push" | "legs" | "core" | "fullbody" | "rest" | "posterior";
+type Category = 'push' | 'pull' | 'legs' | 'core' | 'fullbody' | 'posterior' | 'rest';
 type Phase = "getReady" | "work" | "rest" | "finished";
 type Tab = "home" | "workout" | "settings";
 
@@ -291,6 +292,8 @@ const EXERCISE_DB: Record<string, Exercise> = {
   plank: { id: 'plank', name: 'Plank', category: 'core', met: 3.3, steps: ['Glúteos fuertes', 'Respiración nasal', 'Alineación perfecta'], query: 'perfect plank form' },
   burpees: { id: 'burpees', name: 'Burpee (controlado)', category: 'fullbody', met: 9.8, steps: ['Plancha alta', 'Sin colapsar lumbar', 'Ponte de pie sin salto'], query: 'controlled burpee form' },
   good_mornings: { id: 'good_mornings', name: 'Good Mornings', category: 'posterior', met: 3.0, steps: ['Pies al ancho de hombros', 'Flexiona la cadera', 'Espalda recta siempre'], query: 'good mornings bodyweight' },
+  glute_bridges: { id: 'glute_bridges', name: 'Glute Bridge (Puente)', category: 'posterior', met: 4.5, steps: ['Acostado boca arriba', 'Talones cerca de glúteos', 'Empuja pelvis arriba', 'Baja controlado'], query: 'glute bridge bodyweight perfect form' },
+  floor_pulls: { id: 'floor_pulls', name: 'Reverse Snow Angels', category: 'pull', met: 5.0, steps: ['Acostado boca abajo', 'Contrae glúteos y lumbares', 'Junta las escápulas', 'Brazos suben y bajan laterales'], query: 'reverse snow angels back exercise' },
   rest: { id: 'rest', name: 'Descanso Activo', category: 'rest', met: 2.0, steps: ['Camina libremente', 'Respira profundo', 'Hidrátate'], query: 'active rest stretching' },
 };
 
@@ -310,12 +313,12 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
     ]},
     3: { title: "Posterior + Core", tag: "Estabilidad", exercises: [
       {id: 'lunges', sets: 4, reps: '14/14'}, {id: 'pushups', sets: 4, reps: 12},
-      {id: 'plank', sets: 3, reps: '60s'}, {id: 'squats', sets: 3, reps: 15},
+      {id: 'plank', sets: 3, reps: '60s'}, {id: 'glute_bridges', sets: 3, reps: 15},
       {id: 'burpees', sets: 6, reps: 6},
     ]},
     4: { title: "Full Body Control", tag: "Metabólico", exercises: [
       {id: 'pushups', sets: 4, reps: 14}, {id: 'squats', sets: 4, reps: 18},
-      {id: 'diamond_pushups', sets: 3, reps: 12}, {id: 'plank', sets: 3, reps: '60s'},
+      {id: 'floor_pulls', sets: 3, reps: 12}, {id: 'plank', sets: 3, reps: '60s'},
       {id: 'burpees', sets: 3, reps: 8},
     ]},
   };
@@ -337,12 +340,12 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
       ]},
       3: { title: "Posterior + Core", tag: "+5% Volumen", exercises: [
         {id: 'lunges', sets: 4, reps: '16/16'}, {id: 'pushups', sets: 4, reps: 14},
-        {id: 'plank', sets: 3, reps: '70s'}, {id: 'squats', sets: 3, reps: 18},
+        {id: 'plank', sets: 3, reps: '70s'}, {id: 'glute_bridges', sets: 3, reps: 18},
         {id: 'burpees', sets: 6, reps: 7},
       ]},
       4: { title: "Full Body Control", tag: "+5% Volumen", exercises: [
         {id: 'pushups', sets: 4, reps: 16}, {id: 'squats', sets: 4, reps: 21},
-        {id: 'diamond_pushups', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '70s'},
+        {id: 'floor_pulls', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '70s'},
         {id: 'burpees', sets: 3, reps: 9},
       ]},
     },
@@ -360,12 +363,12 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
       ]},
       3: { title: "Posterior + Core", tag: "Tempo 3-1-1", exercises: [
         {id: 'lunges', sets: 4, reps: '16/16'}, {id: 'pushups', sets: 4, reps: 14},
-        {id: 'plank', sets: 3, reps: '70s'}, {id: 'squats', sets: 3, reps: 18},
+        {id: 'plank', sets: 3, reps: '70s'}, {id: 'glute_bridges', sets: 3, reps: 18},
         {id: 'burpees', sets: 6, reps: 7},
       ]},
       4: { title: "Full Body Control", tag: "Tempo 3-1-1", exercises: [
         {id: 'pushups', sets: 4, reps: 16}, {id: 'squats', sets: 4, reps: 21},
-        {id: 'diamond_pushups', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '70s'},
+        {id: 'floor_pulls', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '70s'},
         {id: 'burpees', sets: 3, reps: 9},
       ]},
     },
@@ -381,10 +384,10 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
       ]},
       3: { title: "Posterior + Core", tag: "Deload", exercises: [
         {id: 'lunges', sets: 3, reps: '10/10'}, {id: 'pushups', sets: 3, reps: 10},
-        {id: 'plank', sets: 2, reps: '45s'},
+        {id: 'glute_bridges', sets: 3, reps: 12}, {id: 'plank', sets: 2, reps: '45s'},
       ]},
       4: { title: "Full Body Control", tag: "Deload", exercises: [
-        {id: 'pushups', sets: 3, reps: 10}, {id: 'squats', sets: 3, reps: 14},
+        {id: 'floor_pulls', sets: 3, reps: 10}, {id: 'squats', sets: 3, reps: 14},
         {id: 'plank', sets: 2, reps: '40s'},
       ]},
     },
@@ -402,12 +405,12 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
       ]},
       3: { title: "Posterior + Core", tag: "Strength Control", exercises: [
         {id: 'lunges', sets: 5, reps: '16/16'}, {id: 'pushups', sets: 5, reps: 14},
-        {id: 'plank', sets: 4, reps: '70s'}, {id: 'squats', sets: 4, reps: 18},
+        {id: 'plank', sets: 4, reps: '70s'}, {id: 'glute_bridges', sets: 4, reps: 18},
         {id: 'burpees', sets: 3, reps: 8},
       ]},
       4: { title: "Full Body Control", tag: "Strength Control", exercises: [
         {id: 'decline_pushups', sets: 5, reps: 14}, {id: 'squats', sets: 5, reps: 20},
-        {id: 'diamond_pushups', sets: 4, reps: 14}, {id: 'plank', sets: 4, reps: '70s'},
+        {id: 'floor_pulls', sets: 4, reps: 14}, {id: 'plank', sets: 4, reps: '70s'},
         {id: 'burpees', sets: 3, reps: 10},
       ]},
     },
@@ -425,12 +428,12 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
       ]},
       3: { title: "Posterior + Core", tag: "Tensión + Densidad", exercises: [
         {id: 'lunges', sets: 4, reps: '18/18'}, {id: 'pushups', sets: 4, reps: 15},
-        {id: 'plank', sets: 3, reps: '80s'}, {id: 'squats', sets: 3, reps: 22},
+        {id: 'plank', sets: 3, reps: '80s'}, {id: 'glute_bridges', sets: 3, reps: 22},
         {id: 'burpees', sets: 6, reps: 10},
       ]},
       4: { title: "Full Body Control", tag: "Tensión + Densidad", exercises: [
         {id: 'pushups', sets: 4, reps: 15}, {id: 'squats', sets: 4, reps: 22},
-        {id: 'diamond_pushups', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '80s'},
+        {id: 'floor_pulls', sets: 3, reps: 14}, {id: 'plank', sets: 3, reps: '80s'},
         {id: 'burpees', sets: 3, reps: 10},
       ]},
     },
@@ -448,12 +451,12 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
       ]},
       3: { title: "Posterior + Core", tag: "High Volume", exercises: [
         {id: 'lunges', sets: 5, reps: '18/18'}, {id: 'pushups', sets: 5, reps: 20},
-        {id: 'plank', sets: 4, reps: '90s'}, {id: 'squats', sets: 4, reps: 25},
+        {id: 'plank', sets: 4, reps: '90s'}, {id: 'glute_bridges', sets: 4, reps: 25},
         {id: 'burpees', sets: 4, reps: 10},
       ]},
       4: { title: "Full Body Control", tag: "High Volume", exercises: [
         {id: 'pushups', sets: 5, reps: 20}, {id: 'squats', sets: 5, reps: 25},
-        {id: 'diamond_pushups', sets: 4, reps: 16}, {id: 'plank', sets: 4, reps: '90s'},
+        {id: 'floor_pulls', sets: 4, reps: 16}, {id: 'plank', sets: 4, reps: '90s'},
         {id: 'burpees', sets: 4, reps: 12},
       ]},
     },
@@ -468,12 +471,12 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
         {id: 'squat_hold', sets: 3, reps: '60s'}, {id: 'plank', sets: 3, reps: '90s'},
       ]},
       3: { title: "Posterior + Core", tag: "Peak Control", exercises: [
-        {id: 'plank', sets: 3, reps: '100s'}, {id: 'pushups', sets: 4, reps: 15},
-        {id: 'lunges', sets: 4, reps: '18/18'}, {id: 'squats', sets: 3, reps: 20},
+        {id: 'plank', sets: 3, reps: '100s'}, {id: 'glute_bridges', sets: 4, reps: 20},
+        {id: 'lunges', sets: 4, reps: '18/18'}, {id: 'floor_pulls', sets: 3, reps: 15},
       ]},
       4: { title: "Full Body Final", tag: "Peak Control", exercises: [
         {id: 'burpees', sets: 4, reps: 10}, {id: 'pushups', sets: 4, reps: 15},
-        {id: 'squats', sets: 4, reps: 20}, {id: 'plank', sets: 3, reps: '90s'},
+        {id: 'squats', sets: 4, reps: 20}, {id: 'floor_pulls', sets: 3, reps: 15},
       ]},
     },
   };
@@ -1152,7 +1155,7 @@ const TrainingView: React.FC<{
         <button 
           onClick={() => setWeek(Math.min(8, week + 1) as WeekLevel)}
           className="w-12 h-12 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-full active:scale-95 text-zinc-400 disabled:opacity-30 disabled:pointer-events-none transition-transform"
-          disabled={week === 8}
+          disabled={week === 8 || week >= userData.currentWeek}
         >
            <ChevronRight size={24} />
         </button>
@@ -1197,7 +1200,7 @@ const TrainingView: React.FC<{
               </span>
               <h3 className="text-3xl sm:text-4xl font-black text-white mb-2 leading-none uppercase tracking-tight">{dailyPlan.title}</h3>
               <p className="text-zinc-400 text-xs font-bold mb-6 flex items-center justify-center gap-2">
-                 <Clock size={12} className="text-zinc-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (typeof ex.sets === 'number' ? ex.sets : 1) * 45 / 60, 0) + dailyPlan.exercises.length * 15 / 60)} MIN
+                 <Clock size={12} className="text-zinc-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (typeof ex.sets === 'number' ? ex.sets : 1) * (45 + (userData.restSeconds || 15)) / 60, 0))} MIN
                  <span className="text-zinc-700">•</span>
                  <Target size={12} className="text-zinc-500"/> {dailyPlan.exercises.length} EJERCICIOS
                  <span className="text-zinc-700">•</span>
@@ -1225,7 +1228,8 @@ const TrainingView: React.FC<{
                   )}
 
                   {dailyPlan.exercises.map((ex, i) => {
-                      const isManuallyChecked = userData.dailyChecklist.exercises.includes(ex.name) && userData.dailyChecklist.date === new Date().toDateString();
+                      const checkKey = `${week}-${day}-${ex.name}`;
+                      const isManuallyChecked = userData.dailyChecklist.exercises.includes(checkKey) && userData.dailyChecklist.date === new Date().toDateString();
                       const isCompleted = isRoutineComplete || isManuallyChecked;
                       
                       return (
@@ -1616,6 +1620,68 @@ const SettingsView: React.FC<{
   );
 };
 
+// --- DATE SELECTOR MODAL ---
+const DateSelectorModal: React.FC<{
+  onSelect: (dateIso: string) => void;
+  onCancel: () => void;
+}> = ({ onSelect, onCancel }) => {
+  const [showPicker, setShowPicker] = useState(false);
+  const [customDate, setCustomDate] = useState("");
+
+  const handleSelect = (daysAgo: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    onSelect(d.toISOString());
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/80 backdrop-blur-sm animate-in fade-in" onClick={onCancel}>
+      <div className="w-full bg-zinc-900 rounded-t-3xl border-t border-white/10 p-6 flex flex-col animate-in slide-in-from-bottom-10 shadow-2xl pb-safe-bottom" onClick={e => e.stopPropagation()}>
+        <h3 className="text-xl font-black text-white text-center mb-6 uppercase tracking-wider">¿Cuándo lo completaste?</h3>
+        
+        {!showPicker ? (
+          <div className="flex flex-col gap-3">
+            <button onClick={() => handleSelect(0)} className="w-full py-4 bg-emerald-600 text-white font-black rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(5,150,105,0.4)]">
+              HOY
+            </button>
+            <button onClick={() => handleSelect(1)} className="w-full py-4 bg-zinc-800 text-amber-400 border border-amber-500/20 font-black rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2">
+              AYER
+            </button>
+            <button onClick={() => setShowPicker(true)} className="w-full py-4 bg-zinc-900 border border-white/10 text-zinc-300 font-bold rounded-xl active:scale-95 transition-transform">
+              Elegir otra fecha...
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <input 
+              type="date" 
+              value={customDate}
+              onChange={(e) => setCustomDate(e.target.value)}
+              className="w-full p-4 bg-black border border-white/10 rounded-xl text-white font-bold"
+            />
+            <div className="flex gap-3 mt-2">
+              <button onClick={() => setShowPicker(false)} className="flex-1 py-3 bg-zinc-800 text-white font-bold rounded-xl active:scale-95">Volver</button>
+              <button 
+                onClick={() => {
+                  if (customDate) {
+                    const [year, month, day] = customDate.split('-').map(Number);
+                    const d = new Date(year, month - 1, day, 12, 0, 0);
+                    onSelect(d.toISOString());
+                  }
+                }} 
+                disabled={!customDate}
+                className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl disabled:opacity-50 active:scale-95 transition-transform"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN APP COMPONENT ---
 const AppInner: React.FC = () => {
   const toast = useToast();
@@ -1624,6 +1690,12 @@ const AppInner: React.FC = () => {
   const [week, setWeek] = useState<WeekLevel>(1);
   const [day, setDay] = useState<number>(1);
   const [workoutMode, setWorkoutMode] = useState<'off' | 'active' | 'paused'>('off');
+  const [pendingCompletion, setPendingCompletion] = useState<{ calories: number, week: WeekLevel, day: number, source: 'timer' | 'manual' } | null>(null);
+  
+  // PWA Update States
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
   const [userData, setUserData] = useState<UserData>(() => {
     const saved = localStorage.getItem("chronos_v8_data");
     const parsed = saved ? JSON.parse(saved) : null;
@@ -1652,6 +1724,45 @@ const AppInner: React.FC = () => {
   });
 
   const cloudLoadComplete = React.useRef(false);
+
+  // --- PWA Service Worker Registration & Update ---
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        // Check if there's already a waiting worker
+        if (registration.waiting) {
+          setWaitingWorker(registration.waiting);
+          setUpdateAvailable(true);
+        }
+
+        registration.addEventListener('updatefound', () => {
+          if (registration.installing) {
+            registration.installing.addEventListener('statechange', () => {
+              if (registration.installing?.state === 'installed' && navigator.serviceWorker.controller) {
+                // New update available
+                setWaitingWorker(registration.installing);
+                setUpdateAvailable(true);
+              }
+            });
+          }
+        });
+      }).catch(err => console.error("SW Registration failed:", err));
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+           refreshing = true;
+           window.location.reload();
+        }
+      });
+    }
+  }, []);
+
+  const updateApp = () => {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("chronos_v8_data", JSON.stringify(userData));
@@ -1716,24 +1827,26 @@ const AppInner: React.FC = () => {
   }, []);
 
   const handleWorkoutComplete = (calories: number) => {
+    setPendingCompletion({ calories, week, day, source: 'timer' });
+  };
+
+  const processCompletion = (completionData: {calories: number, week: WeekLevel, day: number, source: 'timer' | 'manual'}, dateIso: string) => {
+    const { calories, week: compWeek, day: compDay, source } = completionData;
     const today = new Date().toDateString();
-    
-    // Only advance day (not week). Week advances when all 4 days are complete.
-    let nextDay = day < 4 ? day + 1 : day;
 
     setUserData((prev) => {
       const isNewDay = prev.lastWorkoutDate !== today;
+      let nextDay = compDay < 4 ? compDay + 1 : compDay;
       const newHistory = [
         ...prev.history,
-        { date: new Date().toISOString(), calories, week, day },
+        { date: dateIso, calories, week: compWeek, day: compDay },
       ];
 
-      // Check if all 4 days of current week are now complete
-      const completedDays = new Set(newHistory.filter(h => h.week === week).map(h => h.day));
-      let nextWeek = week;
-      if (completedDays.size >= 4 && week < 8) {
-        nextWeek = (week + 1) as WeekLevel;
-        nextDay = 1; // reset to day 1 of new week
+      const completedDays = new Set(newHistory.filter(h => h.week === compWeek).map(h => h.day));
+      let nextWeek = compWeek;
+      if (completedDays.size >= 4 && compWeek < 8) {
+        nextWeek = (compWeek + 1) as WeekLevel;
+        nextDay = 1;
       }
 
       setDay(nextDay);
@@ -1745,12 +1858,17 @@ const AppInner: React.FC = () => {
         streak: isNewDay ? prev.streak + 1 : prev.streak,
         totalWorkouts: prev.totalWorkouts + 1,
         totalCalories: prev.totalCalories + calories,
-        lastWorkoutDate: today,
+        lastWorkoutDate: today, // keeps the streak marker accurate
         history: newHistory,
+        dailyChecklist: source === 'manual' ? { date: today, exercises: getDailyPlan(compWeek, compDay).exercises.map(e => `${compWeek}-${compDay}-${e.name}`) } : prev.dailyChecklist
       };
     });
-    setWorkoutMode('off');
-    setActiveTab("home");
+
+    setPendingCompletion(null);
+    if (source === 'timer') {
+      setWorkoutMode('off');
+      setActiveTab("home");
+    }
   };
 
   const toggleChecklist = (exName: string) => {
@@ -1758,35 +1876,27 @@ const AppInner: React.FC = () => {
     const plan = getDailyPlan(week, day);
     const estimatedKcal = Math.round(
       plan.exercises.reduce((sum, ex) =>
-        sum + (ex.met * 3.5 * USER_WEIGHT_KG / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0)
+        sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0)
     );
+    const checkKey = `${week}-${day}-${exName}`;
 
     setUserData((prev) => {
       const isSameDay = prev.dailyChecklist.date === today;
       let currentList = isSameDay ? prev.dailyChecklist.exercises : [];
 
-      if (currentList.includes(exName)) {
-        currentList = currentList.filter((n) => n !== exName);
+      if (currentList.includes(checkKey)) {
+        currentList = currentList.filter((n) => n !== checkKey);
       } else {
-        currentList = [...currentList, exName];
+        currentList = [...currentList, checkKey];
       }
 
       // Check if ALL exercises are now manually completed
-      const allChecked = plan.exercises.every(ex => currentList.includes(ex.name));
+      const allChecked = plan.exercises.every(ex => currentList.includes(`${week}-${day}-${ex.name}`));
       // Only add history entry once (not if already recorded for this week+day)
       const alreadyRecorded = prev.history.some(h => h.week === week && h.day === day);
 
       if (allChecked && !alreadyRecorded) {
-        const isNewDay = prev.lastWorkoutDate !== today;
-        return {
-          ...prev,
-          dailyChecklist: { date: today, exercises: currentList },
-          history: [...prev.history, { date: new Date().toISOString(), calories: estimatedKcal, week, day }],
-          totalCalories: prev.totalCalories + estimatedKcal,
-          totalWorkouts: prev.totalWorkouts + 1,
-          streak: isNewDay ? prev.streak + 1 : prev.streak,
-          lastWorkoutDate: today,
-        };
+        setPendingCompletion({ calories: estimatedKcal, week, day, source: 'manual' });
       }
 
       return {
@@ -1833,6 +1943,15 @@ const AppInner: React.FC = () => {
       });
       toast.show('Día reiniciado correctamente', 'success');
     }, { confirmText: 'Reiniciar', cancelText: 'Cancelar' });
+  };
+
+  const handleMarkAllComplete = () => {
+    const plan = getDailyPlan(week, day);
+    const estimatedKcal = Math.round(
+      plan.exercises.reduce((sum, ex) =>
+        sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0)
+    );
+    setPendingCompletion({ calories: estimatedKcal, week, day, source: 'manual' });
   };
 
   if (!isAuthenticated) {
@@ -1888,6 +2007,39 @@ const AppInner: React.FC = () => {
           .bg-black { background-color: #000000; }
         `}
       `}</style>
+      
+      {/* PWA Update Banner */}
+      {updateAvailable && (
+        <div className="fixed top-0 left-0 right-0 z-[150] bg-emerald-600 border-b border-emerald-400 p-3 pt-safe-top shadow-xl flex items-center justify-between text-white animate-in slide-in-from-top-full duration-500">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={18} className="animate-spin-slow" />
+            <div>
+              <p className="text-sm font-black uppercase tracking-wider leading-tight">¡Nueva Versión!</p>
+              <p className="text-[10px] font-bold opacity-80 uppercase">Actualización disponible</p>
+            </div>
+          </div>
+          <button 
+            onClick={updateApp}
+            className="bg-white text-emerald-700 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 shadow-lg"
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
+
+      {pendingCompletion && (
+        <DateSelectorModal
+           onSelect={(dateIso) => processCompletion(pendingCompletion, dateIso)}
+           onCancel={() => {
+              setPendingCompletion(null);
+              if (pendingCompletion.source === 'timer') {
+                 setWorkoutMode('off');
+                 setActiveTab('home');
+              }
+           }}
+        />
+      )}
+
       <div className="flex-1 overflow-hidden relative">
         {activeTab === "home" && (
           <StatsView userData={userData} onWaterUpdate={handleWaterUpdate} />
@@ -1917,14 +2069,22 @@ const AppInner: React.FC = () => {
               </button>
             )}
 
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-20 z-50 pointer-events-none flex justify-center">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 sm:px-6 pb-20 z-50 pointer-events-none flex gap-3 justify-center">
               {workoutMode === 'off' && (
-                <button
-                  onClick={() => setWorkoutMode('active')}
-                  className="w-full py-4 bg-white text-black font-black rounded-xl hover:bg-zinc-200 transition-colors active:scale-95 text-lg tracking-widest pointer-events-auto shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2"
-                >
-                   <Dumbbell size={20} /> INICIAR RUTINA
-                </button>
+                <>
+                  <button
+                    onClick={handleMarkAllComplete}
+                    className="flex-1 py-3 bg-zinc-900/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 font-bold rounded-2xl hover:bg-zinc-800 transition-colors active:scale-95 text-xs sm:text-sm tracking-widest pointer-events-auto flex flex-col items-center justify-center gap-1 shadow-lg"
+                  >
+                     <Check size={18} strokeWidth={3} /> COMPLETAR TODA
+                  </button>
+                  <button
+                    onClick={() => setWorkoutMode('active')}
+                    className="flex-[1.5] py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black rounded-2xl hover:brightness-110 transition-all active:scale-95 text-sm sm:text-base tracking-widest pointer-events-auto shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 border-[3px] border-black ring-2 ring-emerald-500/50"
+                  >
+                     <Play size={20} fill="black" /> INICIAR RUTINA
+                  </button>
+                </>
               )}
             </div>
           </div>
