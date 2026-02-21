@@ -52,45 +52,63 @@ try {
 
 // --- PANTALLA DE BIENVENIDA ---
 const AuthScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
+  const [isExiting, setIsExiting] = useState(false);
+
   const handleGoogleLogin = async () => {
     try {
       if (auth && googleProvider) {
         await signInWithPopup(auth, googleProvider);
       }
-      onLogin(); // Entra a la app
+      setIsExiting(true);
+      setTimeout(() => onLogin(), 600); // Wait for fade out
     } catch (err: any) {
       console.warn("Bypass Login (Faltan credenciales de Auth reales en firebaseConfig):", err);
-      onLogin(); // Bypass para testeo offline
+      setIsExiting(true);
+      setTimeout(() => onLogin(), 600);
     }
   };
 
   return (
-    <div className="h-dvh flex flex-col items-center justify-center bg-black px-6 text-center animate-in fade-in zoom-in duration-700">
-      <div className="relative mb-12">
-        <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
-        <Dumbbell className="w-24 h-24 text-emerald-400 drop-shadow-[0_0_30px_rgba(52,211,153,0.5)] relative z-10" />
-      </div>
+    <div className={`h-dvh flex flex-col items-center justify-between bg-[#09090b] px-6 py-12 text-center relative overflow-hidden transition-all duration-700 ease-in-out ${isExiting ? 'opacity-0 scale-105 blur-sm' : 'opacity-100 scale-100 blur-0'}`}>
       
-      <h1 className="text-4xl font-black text-white tracking-tighter uppercase mb-4">
-        Calis<span className="text-emerald-500">Home</span>
-      </h1>
-      <p className="text-zinc-400 font-medium mb-12 max-w-sm text-sm">
-        Entrenamiento estricto de 8 semanas. Registra tu progreso local o en la nube.
-      </p>
+      {/* Premium Background Image */}
+      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
+        <img 
+          src="/dumbbell-bg.png" 
+          alt="Premium Calisthenics Equipment" 
+          className="w-full h-full object-cover object-center opacity-40 mix-blend-lighten"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/80 to-[#09090b]/40 z-10" />
+      </div>
 
-      <button
-        onClick={handleGoogleLogin}
-        className="w-full max-w-xs flex items-center justify-center gap-3 bg-white text-black py-4 px-6 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-zinc-200 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-      >
-        <svg fill="currentColor" className="w-5 h-5" viewBox="0 0 24 24">
-          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-        </svg>
-        Entrar con Google
-      </button>
-      <p className="text-zinc-600 text-[10px] mt-6 font-bold uppercase tracking-widest">v8.0.0 Athlete Edition</p>
+      {/* Top spacer */}
+      <div className="flex-1 relative z-20" />
+
+      {/* Main UI Content - Only Typography */}
+      <div className="flex-none flex flex-col items-center justify-center w-full mb-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 relative z-20">
+        <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 tracking-tighter drop-shadow-[0_0_15px_rgba(52,211,153,0.3)] animate-pulse-glow">
+          CalisHome
+        </h1>
+        <p className="text-zinc-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-3 drop-shadow-md">
+          Athlete Edition
+        </p>
+      </div>
+
+      {/* Bottom CTA Area - Dark Effect Button */}
+      <div className="flex-1 flex flex-col items-center justify-end w-full max-w-sm gap-8 pb-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300 fill-mode-both relative z-20">
+        <button
+          onClick={handleGoogleLogin}
+          className="group w-full flex items-center justify-center gap-4 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 text-zinc-300 py-4 px-6 rounded-2xl font-bold text-sm tracking-widest uppercase hover:bg-zinc-800 hover:text-white hover:border-emerald-500/50 active:scale-95 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(52,211,153,0.2)]"
+        >
+          <svg fill="currentColor" className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform duration-300" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+          </svg>
+          Ingresar con Google
+        </button>
+      </div>
     </div>
   );
 };
