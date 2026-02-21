@@ -1120,17 +1120,18 @@ const TrainingView: React.FC<{
   userData: UserData;
   onToggleCheck: (exName: string) => void;
   onResetDay: () => void;
-}> = ({ week, setWeek, day, setDay, userData, onToggleCheck, onResetDay }) => {
+  selectedEx: Exercise | null;
+  setSelectedEx: (ex: Exercise | null) => void;
+}> = ({ week, setWeek, day, setDay, userData, onToggleCheck, onResetDay, selectedEx, setSelectedEx }) => {
   const dailyPlan = useMemo(() => getDailyPlan(week, day), [week, day]);
   const theme = THEMES[week];
-  const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
 
   const isRoutineComplete = useMemo(() => {
     return userData.history.some(h => h.week === week && h.day === day);
   }, [userData.history, week, day]);
 
   return (
-    <div className="h-full flex flex-col p-6 overflow-y-auto pb-32 pt-safe-top">
+    <div className="h-full flex flex-col p-6 overflow-y-auto pb-48 sm:pb-40 pt-safe-top">
       {selectedEx && (
         <ExerciseGuideModal
           exercise={selectedEx}
@@ -1690,6 +1691,7 @@ const AppInner: React.FC = () => {
   const [week, setWeek] = useState<WeekLevel>(1);
   const [day, setDay] = useState<number>(1);
   const [workoutMode, setWorkoutMode] = useState<'off' | 'active' | 'paused'>('off');
+  const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
   const [pendingCompletion, setPendingCompletion] = useState<{ calories: number, week: WeekLevel, day: number, source: 'timer' | 'manual' } | null>(null);
   
   // PWA Update States
@@ -2057,6 +2059,8 @@ const AppInner: React.FC = () => {
               userData={userData}
               onToggleCheck={toggleChecklist}
               onResetDay={handleResetDay}
+              selectedEx={selectedEx}
+              setSelectedEx={setSelectedEx}
             />
             
             {/* Paused workout banner */}
@@ -2069,20 +2073,20 @@ const AppInner: React.FC = () => {
               </button>
             )}
 
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 sm:px-6 pb-20 z-50 pointer-events-none flex gap-3 justify-center">
-              {workoutMode === 'off' && (
+            <div className="absolute bottom-6 sm:bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-3 sm:px-6 pb-20 z-50 pointer-events-none flex gap-2.5 sm:gap-3 justify-center">
+              {workoutMode === 'off' && !selectedEx && (
                 <>
                   <button
                     onClick={handleMarkAllComplete}
-                    className="flex-1 py-3 bg-zinc-900/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 font-bold rounded-2xl hover:bg-zinc-800 transition-colors active:scale-95 text-xs sm:text-sm tracking-widest pointer-events-auto flex flex-col items-center justify-center gap-1 shadow-lg"
+                    className="flex-1 py-3 bg-zinc-900/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 font-bold rounded-2xl hover:bg-zinc-800 transition-colors active:scale-95 text-[10px] sm:text-xs tracking-widest pointer-events-auto flex flex-col items-center justify-center gap-1 shadow-xl"
                   >
-                     <Check size={18} strokeWidth={3} /> COMPLETAR TODA
+                     <Check size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" /> COMPLETAR TODA
                   </button>
                   <button
                     onClick={() => setWorkoutMode('active')}
-                    className="flex-[1.5] py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black rounded-2xl hover:brightness-110 transition-all active:scale-95 text-sm sm:text-base tracking-widest pointer-events-auto shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 border-[3px] border-black ring-2 ring-emerald-500/50"
+                    className="flex-[1.2] py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black rounded-2xl hover:brightness-110 transition-all active:scale-95 text-xs sm:text-sm tracking-widest pointer-events-auto shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-1.5 border-[3px] border-black ring-2 ring-emerald-500/50"
                   >
-                     <Play size={20} fill="black" /> INICIAR RUTINA
+                     <Play size={18} fill="black" className="sm:w-[20px] sm:h-[20px]" /> INICIAR RUTINA
                   </button>
                 </>
               )}
