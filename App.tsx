@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { BarChart, Bar, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import {
   Play,
   Pause,
@@ -13,7 +14,6 @@ import {
   Dumbbell,
   Footprints,
   Activity,
-  HeartPulse,
   Zap,
   BarChart2,
   Calendar,
@@ -25,10 +25,79 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import WaterTracker from "./src/components/WaterTracker";
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+
+// --- FIREBASE CONFIG ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAw219mME1tUInToBenaTz6sbOXwhjQ_A4",
+  authDomain: "calishome-bb361.firebaseapp.com",
+  projectId: "calishome-bb361",
+  storageBucket: "calishome-bb361.firebasestorage.app",
+  messagingSenderId: "490047922513",
+  appId: "1:490047922513:web:399380d93731d7a34df370"
+};
+
+// Se inicializa, pero si los datos son inválidos, el AuthScreen manejará el bypass para que no rompa la app.
+let app: any, auth: any, googleProvider: any, db: any;
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+  db = getFirestore(app);
+} catch (error) {
+  console.warn("Firebase Init Error:", error);
+}
+
+// --- PANTALLA DE BIENVENIDA ---
+const AuthScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
+  const handleGoogleLogin = async () => {
+    try {
+      if (auth && googleProvider) {
+        await signInWithPopup(auth, googleProvider);
+      }
+      onLogin(); // Entra a la app
+    } catch (err: any) {
+      console.warn("Bypass Login (Faltan credenciales de Auth reales en firebaseConfig):", err);
+      onLogin(); // Bypass para testeo offline
+    }
+  };
+
+  return (
+    <div className="h-dvh flex flex-col items-center justify-center bg-black px-6 text-center animate-in fade-in zoom-in duration-700">
+      <div className="relative mb-12">
+        <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+        <Dumbbell className="w-24 h-24 text-emerald-400 drop-shadow-[0_0_30px_rgba(52,211,153,0.5)] relative z-10" />
+      </div>
+      
+      <h1 className="text-4xl font-black text-white tracking-tighter uppercase mb-4">
+        Calis<span className="text-emerald-500">Home</span>
+      </h1>
+      <p className="text-zinc-400 font-medium mb-12 max-w-sm text-sm">
+        Entrenamiento estricto de 8 semanas. Registra tu progreso local o en la nube.
+      </p>
+
+      <button
+        onClick={handleGoogleLogin}
+        className="w-full max-w-xs flex items-center justify-center gap-3 bg-white text-black py-4 px-6 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-zinc-200 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+      >
+        <svg fill="currentColor" className="w-5 h-5" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+        </svg>
+        Entrar con Google
+      </button>
+      <p className="text-zinc-600 text-[10px] mt-6 font-bold uppercase tracking-widest">v8.0.0 Athlete Edition</p>
+    </div>
+  );
+};
 type WeekLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 type Category = "push" | "legs" | "core" | "fullbody" | "rest";
 type Phase = "getReady" | "work" | "rest" | "finished";
-type Tab = "home" | "workout";
+type Tab = "home" | "workout" | "settings";
 
 interface Exercise {
   id: string;
@@ -60,6 +129,7 @@ interface UserData {
   dailyChecklist: { date: string; exercises: string[] };
   waterIntake: number; // 0-10 glasses
   lastWaterDate: string | null;
+  theme?: "claro" | "medio" | "oscuro";
 }
 
 interface DailyPlan {
@@ -113,7 +183,6 @@ const THEMES: Record<
   WeekLevel,
   {
     primary: string;
-    dim: string;
     gradient: string;
     text: string;
     shadow: string;
@@ -121,14 +190,14 @@ const THEMES: Record<
     border: string;
   }
 > = {
-  1: { primary: "bg-emerald-500", dim: "bg-emerald-900/20", gradient: "from-emerald-900", text: "text-emerald-400", shadow: "shadow-emerald-500/20", badge: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20", border: "border-emerald-500/30" },
-  2: { primary: "bg-sky-500", dim: "bg-sky-900/20", gradient: "from-sky-900", text: "text-sky-400", shadow: "shadow-sky-500/20", badge: "bg-sky-500/10 text-sky-300 border-sky-500/20", border: "border-sky-500/30" },
-  3: { primary: "bg-violet-600", dim: "bg-violet-900/20", gradient: "from-violet-900", text: "text-violet-400", shadow: "shadow-violet-500/20", badge: "bg-violet-500/10 text-violet-300 border-violet-500/20", border: "border-violet-500/30" },
-  4: { primary: "bg-amber-500", dim: "bg-amber-900/20", gradient: "from-amber-900", text: "text-amber-400", shadow: "shadow-amber-500/20", badge: "bg-amber-500/10 text-amber-300 border-amber-500/20", border: "border-amber-500/30" },
-  5: { primary: "bg-rose-600", dim: "bg-rose-900/20", gradient: "from-rose-900", text: "text-rose-400", shadow: "shadow-rose-500/20", badge: "bg-rose-500/10 text-rose-300 border-rose-500/20", border: "border-rose-500/30" },
-  6: { primary: "bg-fuchsia-600", dim: "bg-fuchsia-900/20", gradient: "from-fuchsia-900", text: "text-fuchsia-400", shadow: "shadow-fuchsia-500/20", badge: "bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/20", border: "border-fuchsia-500/30" },
-  7: { primary: "bg-orange-600", dim: "bg-orange-900/20", gradient: "from-orange-900", text: "text-orange-400", shadow: "shadow-orange-500/20", badge: "bg-orange-500/10 text-orange-300 border-orange-500/20", border: "border-orange-500/30" },
-  8: { primary: "bg-red-600", dim: "bg-red-900/20", gradient: "from-red-900", text: "text-red-400", shadow: "shadow-red-500/20", badge: "bg-red-500/10 text-red-300 border-red-500/20", border: "border-red-500/30" }
+  1: { primary: "bg-emerald-500", gradient: "from-emerald-900", text: "text-emerald-400", shadow: "shadow-emerald-500/20", badge: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20", border: "border-emerald-500/30" },
+  2: { primary: "bg-sky-500", gradient: "from-sky-900", text: "text-sky-400", shadow: "shadow-sky-500/20", badge: "bg-sky-500/10 text-sky-300 border-sky-500/20", border: "border-sky-500/30" },
+  3: { primary: "bg-violet-600", gradient: "from-violet-900", text: "text-violet-400", shadow: "shadow-violet-500/20", badge: "bg-violet-500/10 text-violet-300 border-violet-500/20", border: "border-violet-500/30" },
+  4: { primary: "bg-amber-500", gradient: "from-amber-900", text: "text-amber-400", shadow: "shadow-amber-500/20", badge: "bg-amber-500/10 text-amber-300 border-amber-500/20", border: "border-amber-500/30" },
+  5: { primary: "bg-rose-600", gradient: "from-rose-900", text: "text-rose-400", shadow: "shadow-rose-500/20", badge: "bg-rose-500/10 text-rose-300 border-rose-500/20", border: "border-rose-500/30" },
+  6: { primary: "bg-fuchsia-600", gradient: "from-fuchsia-900", text: "text-fuchsia-400", shadow: "shadow-fuchsia-500/20", badge: "bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/20", border: "border-fuchsia-500/30" },
+  7: { primary: "bg-orange-600", gradient: "from-orange-900", text: "text-orange-400", shadow: "shadow-orange-500/20", badge: "bg-orange-500/10 text-orange-300 border-orange-500/20", border: "border-orange-500/30" },
+  8: { primary: "bg-red-600", gradient: "from-red-900", text: "text-red-400", shadow: "shadow-red-500/20", badge: "bg-red-500/10 text-red-300 border-red-500/20", border: "border-red-500/30" }
 };
 
 // --- MOTOR DE AUDIO ---
@@ -177,6 +246,16 @@ const playTone = (
     osc.stop(audioCtx.currentTime + duration);
   } catch (e) {
     console.error("Audio Error:", e);
+  }
+};
+
+const speakTone = (text: string) => {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "es-ES";
+    utterance.rate = 1.1; // Un poco más rápido y dinámico
+    window.speechSynthesis.speak(utterance);
   }
 };
 
@@ -299,6 +378,22 @@ const BottomNav: React.FC<{ activeTab: Tab; onChange: (t: Tab) => void }> = ({
           />
         </div>
         <span className="text-[10px] font-bold tracking-widest">RUTINA</span>
+      </button>
+
+      <button
+        onClick={() => onChange("settings")}
+        className={`flex flex-col items-center justify-center w-full h-full space-y-1.5 transition-colors duration-300 group ${activeTab === "settings" ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+      >
+        <div
+          className={`p-1.5 rounded-xl transition-all duration-300 ${activeTab === "settings" ? "bg-white/10" : "bg-transparent"}`}
+        >
+          <Settings
+            size={24}
+            strokeWidth={activeTab === "settings" ? 2.5 : 2}
+            className="transition-transform group-active:scale-90"
+          />
+        </div>
+        <span className="text-[10px] font-bold tracking-widest">AJUSTES</span>
       </button>
     </div>
   </div>
@@ -426,10 +521,11 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   };
 
   useEffect(() => {
+    let sentinel: WakeLockSentinel | null = null;
     const requestWakeLock = async () => {
       if ("wakeLock" in navigator) {
         try {
-          const sentinel = await navigator.wakeLock.request("screen");
+          sentinel = await navigator.wakeLock.request("screen");
           setWakeLock(sentinel);
         } catch (err) {
           console.warn("Wake Lock error:", err);
@@ -438,7 +534,7 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
     };
     requestWakeLock();
     return () => {
-      if (wakeLock) wakeLock.release();
+      if (sentinel) sentinel.release();
     };
   }, []);
 
@@ -708,50 +804,52 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
 
       {/* Timer & Main Visual - Adaptive Sizing */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-0 landscape:flex-1 landscape:mt-12 landscape:h-full landscape:justify-center">
-        <button
-          onClick={toggleTimer}
-          className="relative w-[min(70vw,300px)] landscape:w-[min(60vh,300px)] landscape:h-[min(60vh,300px)] aspect-square flex items-center justify-center mb-6 landscape:mb-0 active:scale-[0.98] transition-transform touch-manipulation outline-none"
-        >
-          <svg className="absolute inset-0 w-full h-full -rotate-90 drop-shadow-2xl overflow-visible">
-            <circle
-              cx="50%"
-              cy="50%"
-              r="46%"
-              stroke="#27272a"
-              strokeWidth="6%"
-              fill="transparent"
-            />
-            <circle
-              cx="50%"
-              cy="50%"
-              r="46%"
-              stroke="currentColor"
-              strokeWidth="6%"
-              fill="transparent"
-              strokeDasharray="289%"
-              strokeDashoffset={`${289 * (pct / 100)}%`}
-              strokeLinecap="round"
-              className={`transition-all duration-1000 ease-linear ${isResting ? "text-emerald-500" : theme.text} ${isActive ? (timeLeft <= 4 ? "animate-pulse-glow-fast" : "animate-pulse-glow") : ""}`}
-            />
-          </svg>
+        <div className="relative flex items-center justify-center w-full max-w-[300px] sm:max-w-[400px]">
+          <button
+            onClick={toggleTimer}
+            className="relative w-full aspect-square flex items-center justify-center mb-6 landscape:mb-0 active:scale-[0.98] transition-transform touch-manipulation outline-none"
+          >
+            <svg className="absolute inset-0 w-full h-full -rotate-90 drop-shadow-2xl overflow-visible">
+              <circle
+                cx="50%"
+                cy="50%"
+                r="46%"
+                stroke="#27272a"
+                strokeWidth="6%"
+                fill="transparent"
+              />
+              <circle
+                cx="50%"
+                cy="50%"
+                r="46%"
+                stroke="currentColor"
+                strokeWidth="6%"
+                fill="transparent"
+                strokeDasharray="289%"
+                strokeDashoffset={`${289 * (pct / 100)}%`}
+                strokeLinecap="round"
+                className={`transition-all duration-1000 ease-linear ${isResting ? "text-sky-500 drop-shadow-[0_0_15px_rgba(14,165,233,0.3)]" : theme.text} ${isActive ? (timeLeft <= 4 ? "animate-pulse-glow-fast" : "animate-pulse-glow") : ""}`}
+              />
+            </svg>
 
-          <div className="flex flex-col items-center z-10">
-            <span
-              className={`text-7xl sm:text-8xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg ${timeLeft < 4 && isActive ? "animate-pulse text-red-500" : ""}`}
-            >
-              {timeLeft}
-            </span>
-            <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-zinc-400 mt-2">
-              {isResting ? "DESCANSO" : "TRABAJO"}
-            </span>
-          </div>
-
-          {(!isActive || showGuide || showExitConfirm) && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 rounded-full backdrop-blur-sm animate-in fade-in">
-              <Pause className="fill-white text-white w-12 h-12 drop-shadow-lg" />
+            <div className="flex flex-col items-center z-10">
+              <span
+                className={`text-6xl sm:text-8xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg ${timeLeft < 4 && isActive ? "animate-pulse text-red-500" : ""}`}
+              >
+                {timeLeft}
+              </span>
+              <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-zinc-400 mt-2">
+                {isResting ? "DESCANSO" : "TRABAJO"}
+              </span>
             </div>
-          )}
-        </button>
+
+            {(!isActive || showGuide || showExitConfirm) && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 rounded-full backdrop-blur-sm animate-in fade-in">
+                <Pause className="fill-white text-white w-12 h-12 drop-shadow-lg" />
+              </div>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Info & Footer Controls - Adaptive Layout */}
@@ -789,6 +887,25 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
                 <Info size={18} className={theme.text} />
               </button>
             </div>
+
+            {/* Custom Timer Adjustments during rest - Positioned cleanly below text */}
+            {phase === "rest" && (
+              <div className="flex gap-6 mt-4 justify-center items-center w-full z-30 pointer-events-auto">
+                <button
+                  disabled={timeLeft <= 15}
+                  onClick={(e) => { e.stopPropagation(); setTimeLeft(t => Math.max(1, t - 15)); triggerHaptic(10); }}
+                  className="w-14 h-10 rounded-xl bg-zinc-900 border border-zinc-700 font-black text-xs text-white shadow-xl active:scale-90 transition-transform hover:bg-zinc-800 disabled:opacity-30 flex items-center justify-center"
+                >
+                  -15s
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setTimeLeft(t => t + 15); triggerHaptic(10); }}
+                  className="w-14 h-10 rounded-xl bg-zinc-900 border border-zinc-700 font-black text-xs text-white shadow-xl active:scale-90 transition-transform hover:bg-zinc-800 flex items-center justify-center"
+                >
+                  +15s
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="h-12 flex items-center justify-center">
@@ -980,15 +1097,57 @@ const StatsView: React.FC<{
   userData: UserData;
   onWaterUpdate: (count: number) => void;
 }> = ({ userData, onWaterUpdate }) => {
+  const [selectedEntry, setSelectedEntry] = useState<UserData['history'][0] | null>(null);
+  const [showChart, setShowChart] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  const todayDate = new Date();
+  const currentMonth = todayDate.getMonth();
+  const currentYear = todayDate.getFullYear();
+  
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+  const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+  const days = Array(startOffset).fill(null);
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(new Date(currentYear, currentMonth, i));
+  }
+
+  const historyMap = useMemo(() => {
+    const map = new Map();
+    userData.history.forEach(entry => {
+      const d = new Date(entry.date);
+      const k = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+      map.set(k, entry);
+    });
+    return map;
+  }, [userData.history]);
+
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  const chartData = useMemo(() => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(todayDate);
+      d.setDate(todayDate.getDate() - i);
+      const isoDate = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+      const entryInfo = historyMap.get(isoDate);
+      data.push({
+        name: ['D','L','M','X','J','V','S'][d.getDay()],
+        calories: entryInfo ? Math.ceil(entryInfo.calories) : 0,
+      });
+    }
+    return data;
+  }, [historyMap, todayDate]);
+
   return (
     <div className="h-full p-6 overflow-y-auto pb-24 text-white">
       <h2 className="text-2xl font-black italic tracking-tighter uppercase mb-6">
         Tu Progreso
       </h2>
 
-
-      {/* Water Tracker */}
-      <div className="mb-6">
+      {/* Water Tracker moved to top */}
+      <div className="mb-8">
         <WaterTracker
           initialGlasses={userData.waterIntake}
           onUpdate={onWaterUpdate}
@@ -996,7 +1155,7 @@ const StatsView: React.FC<{
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-zinc-900 p-3 rounded-2xl border border-zinc-800 flex flex-col justify-center items-center relative overflow-hidden text-center">
           <div className="flex items-center gap-1.5 mb-1">
             <Flame size={14} className="text-orange-500" />
@@ -1023,59 +1182,191 @@ const StatsView: React.FC<{
 
         <div className="bg-zinc-900 p-3 rounded-2xl border border-zinc-800 flex flex-col justify-center items-center relative overflow-hidden text-center">
           <div className="flex items-center gap-1.5 mb-1">
-            <Trophy size={14} className="text-yellow-500" />
+            <Target size={14} className="text-yellow-500" />
             <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider">
-              Total
+              Restantes
             </span>
           </div>
           <div className="text-xl font-black text-white">
-            {userData.totalWorkouts}
+            {Math.max(0, GOAL_DAYS - userData.totalWorkouts)}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4 text-zinc-400 mt-4">
-        <Calendar size={16} />
-        <h3 className="text-sm font-bold uppercase tracking-wider">
-          Historial Reciente
-        </h3>
+      {/* Chart Section Toggle */}
+      <button 
+        onClick={() => setShowChart(!showChart)}
+        className="w-full flex items-center justify-between mt-8 mb-4 active:scale-95 transition-transform"
+      >
+        <div className="flex items-center gap-2 text-zinc-400">
+          <BarChart2 size={16} />
+          <h3 className="text-sm font-bold uppercase tracking-wider">
+            Rendimiento Semanal
+          </h3>
+        </div>
+        <ChevronUp size={16} className={`text-zinc-500 transition-transform ${showChart ? '' : 'rotate-180'}`} />
+      </button>
+
+      {/* Chart Section Content */}
+      <div className={`transition-all duration-300 overflow-hidden ${showChart ? 'max-h-64 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0'}`}>
+        <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/5">
+          <div className="h-40 w-full px-1">
+            {showChart && (
+              <ResponsiveContainer width="99%" height="100%">
+                <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', color: '#fff' }}
+                    itemStyle={{ color: '#10B981', fontWeight: 'bold' }}
+                    formatter={(value: any) => [`${value} kcal`, 'Quemado']}
+                    labelStyle={{ display: 'none' }}
+                  />
+                  <Bar dataKey="calories" radius={[4, 4, 4, 4]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.calories > 0 ? '#10B981' : '#27272a'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <div className="flex justify-between mt-3 px-3">
+            {chartData.map((d, i) => (
+              <span key={i} className={`text-[10px] font-bold ${d.calories > 0 ? 'text-emerald-400' : 'text-zinc-600'}`}>{d.name}</span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-3">
-        {[...userData.history]
-          .reverse()
-          .slice(0, 10)
-          .map((entry, i) => (
-            <div
-              key={i}
-              className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-xl border border-white/5"
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className={`w-2 h-2 rounded-full ${entry.difficulty === "spartan" ? "bg-rose-500" : entry.difficulty === "intermediate" ? "bg-violet-500" : "bg-emerald-500"}`}
-                />
-                <div>
-                  <div className="text-white font-bold text-sm">
-                    {new Date(entry.date).toLocaleDateString()}
-                  </div>
-                  <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
-                    Semana {entry.week} - Día {entry.day}
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-white font-mono font-bold">
-                  {Math.ceil(entry.calories)}{" "}
-                  <span className="text-xs text-zinc-500">kcal</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        {userData.history.length === 0 && (
-          <div className="text-zinc-500 text-center py-12 border border-dashed border-zinc-800 rounded-2xl">
-            <p className="text-sm">Sin actividad reciente.</p>
+      <button 
+        onClick={() => setShowCalendar(!showCalendar)}
+        className="w-full flex items-center justify-between mb-4 mt-8 active:scale-95 transition-transform"
+      >
+        <div className="flex items-center gap-2 text-zinc-400">
+          <Calendar size={16} />
+          <h3 className="text-sm font-bold uppercase tracking-wider">
+            Historial
+          </h3>
+        </div>
+        <ChevronUp size={16} className={`text-zinc-500 transition-transform ${showCalendar ? '' : 'rotate-180'}`} />
+      </button>
+
+      <div className={`transition-all duration-300 overflow-hidden ${showCalendar ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/5">
+          <div className="text-center mb-4">
+            <h4 className="text-sm font-black tracking-widest uppercase text-white">{monthNames[currentMonth]} {currentYear}</h4>
           </div>
-        )}
+          <div className="grid grid-cols-7 gap-1 text-center mb-2">
+            {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
+              <div key={day} className="text-[10px] font-bold text-zinc-500">{day}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((date, i) => {
+              if (!date) return <div key={`empty-${i}`} className="aspect-square" />;
+              const tzD = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+              const hasEntry = historyMap.has(tzD);
+              const entryData = historyMap.get(tzD);
+
+              return (
+                <button
+                  key={i}
+                  disabled={!hasEntry}
+                  onClick={() => hasEntry && setSelectedEntry(entryData)}
+                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all relative
+                    ${hasEntry ? 'bg-zinc-800 text-white active:scale-95 cursor-pointer hover:bg-zinc-700 shadow-sm border border-white/10' : 'text-zinc-600'}
+                  `}
+                >
+                  {date.getDate()}
+                  {hasEntry && (
+                    <div className={`w-1.5 h-1.5 rounded-full mt-0.5 shadow-sm ${THEMES[entryData.week]?.primary || "bg-emerald-500"}`} />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {selectedEntry && (
+        <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in" onClick={() => setSelectedEntry(null)}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-sm relative shadow-2xl" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSelectedEntry(null)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-zinc-800 text-zinc-400 rounded-full active:scale-90 transition-transform">
+              <X size={16} />
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+               <div className={`w-3 h-3 rounded-full ${THEMES[selectedEntry.week]?.primary || "bg-emerald-500"}`} />
+               <h3 className="text-xl font-black italic tracking-tighter uppercase">Sesión Resumen</h3>
+            </div>
+            <div className="space-y-3">
+               <div className="bg-zinc-950 p-4 rounded-2xl flex justify-between items-center border border-white/5">
+                 <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Fecha / Hora</span>
+                 <span className="text-white font-bold text-sm text-right">
+                    {new Date(selectedEntry.date).toLocaleDateString()}<br/>
+                    <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest">{new Date(selectedEntry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                 </span>
+               </div>
+               <div className="grid grid-cols-2 gap-3">
+                 <div className="bg-zinc-950 p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+                    <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-1.5">RUTINA</span>
+                    <span className="text-white font-black text-lg leading-none">SEMANA {selectedEntry.week} <br/><span className="text-emerald-500 text-xs uppercase tracking-widest mt-1 inline-block">DÍA {selectedEntry.day}</span></span>
+                 </div>
+                 <div className="bg-zinc-950 p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+                    <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-1.5">QUEMADO</span>
+                    <span className="text-orange-500 font-black text-3xl leading-none">{Math.ceil(selectedEntry.calories)}<span className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest ml-1">kcal</span></span>
+                 </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+// --- SETTINGS VIEW ---
+const SettingsView: React.FC<{
+  userData: UserData;
+  setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+}> = ({ userData, setUserData }) => {
+  const currentTheme = userData.theme || "oscuro";
+
+  const resetRoutine = () => {
+    if (window.confirm("¿Estás 100% seguro de que deseas resetear tu progreso entero de 8 semanas? Esto borrará tus kilocalorías, racha y días.")) {
+      setUserData(prev => ({ 
+        ...prev, 
+        history: [], 
+        currentWeek: 1, 
+        dailyChecklist: { date: new Date().toDateString(), exercises: [] }, 
+        streak: 0, 
+        totalWorkouts: 0,
+        totalCalories: 0,
+        lastWorkoutDate: null
+      }));
+    }
+  };
+
+  return (
+    <div className="h-full p-6 overflow-y-auto pb-24 text-white text-center">
+      <h2 className="text-2xl font-black italic tracking-tighter uppercase mb-6">Ajustes</h2>
+      
+      <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 mb-6 shadow-lg">
+        <h3 className="text-sm uppercase tracking-widest text-zinc-400 font-bold mb-4">Tema de Interfaz</h3>
+        <div className="flex gap-2 justify-center">
+          <button onClick={() => setUserData(p => ({ ...p, theme: 'medio' }))}
+                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${currentTheme === 'medio' ? 'bg-[#1E293B] text-[#38BDF8] shadow-[0_0_15px_rgba(14,165,233,0.2)] border border-[#0EA5E9]' : 'bg-black/50 text-zinc-500'}`}>Océano</button>
+          <button onClick={() => setUserData(p => ({ ...p, theme: 'oscuro' }))}
+                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${currentTheme === 'oscuro' ? 'bg-black border border-zinc-700 text-white shadow-[0_0_15px_rgba(255,255,255,0.05)]' : 'bg-black/50 text-zinc-500'}`}>Void</button>
+        </div>
+      </div>
+
+      <div className="bg-red-950/20 p-6 rounded-2xl border border-red-900/50 mt-12 shadow-inner">
+        <h3 className="text-lg font-bold text-red-500 mb-2">Zona de Peligro</h3>
+        <p className="text-xs text-red-400/70 mb-6">Reiniciar la rutina borrará tu progreso actual y recomenzará tu viaje en CalisHome.</p>
+        <button onClick={resetRoutine} className="w-full bg-red-600/20 text-red-500 border border-red-500/50 rounded-xl py-3 font-bold active:scale-95 transition-transform uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:bg-red-600/30">
+          Resetear Todo
+        </button>
       </div>
     </div>
   );
@@ -1083,6 +1374,7 @@ const StatsView: React.FC<{
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [week, setWeek] = useState<WeekLevel>(1);
   const [day, setDay] = useState<number>(1);
@@ -1105,9 +1397,46 @@ const App: React.FC = () => {
         };
   });
 
+  const cloudLoadComplete = React.useRef(false);
+
   useEffect(() => {
     localStorage.setItem("chronos_v8_data", JSON.stringify(userData));
+    if (auth?.currentUser && db && cloudLoadComplete.current) {
+      setDoc(doc(db, "users", auth.currentUser.uid), userData).catch(err => console.warn("Cloud Sync Error", err));
+    }
   }, [userData]);
+
+  // Auth Cloud Sync
+  useEffect(() => {
+    if (!auth) return;
+    const unsub = auth.onAuthStateChanged(async (user: any) => {
+      if (user && db) {
+        setIsAuthenticated(true);
+        try {
+          const docSnap = await getDoc(doc(db, "users", user.uid));
+          if (docSnap.exists()) {
+            const cloudData = docSnap.data() as UserData;
+            setUserData(prev => ({ ...prev, ...cloudData, currentWeek: cloudData.currentWeek || 1 }));
+            setTimeout(() => { cloudLoadComplete.current = true; }, 100);
+          } else {
+            // New active cloud account, pump local to cloud directly
+            setDoc(doc(db, "users", user.uid), userData);
+            cloudLoadComplete.current = true;
+          }
+        } catch (e: any) {
+          if (e.code === 'permission-denied') {
+             console.warn("Acceso a Firestore denegado. Configura las reglas de la BD a modo prueba o asegúrate de que el UID coincida.");
+          } else {
+             console.warn("Fallo de Firestore:", e);
+          }
+        }
+      } else {
+        setIsAuthenticated(false);
+        cloudLoadComplete.current = false;
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // Check streak on load
   useEffect(() => {
@@ -1134,17 +1463,18 @@ const App: React.FC = () => {
 
   const handleWorkoutComplete = (calories: number) => {
     const today = new Date().toDateString();
+    
+    let nextDay = day + 1;
+    let nextWeek = week;
+    if (nextDay > 4) {
+      nextDay = 1;
+      if (nextWeek < 8) nextWeek = (nextWeek + 1) as WeekLevel;
+    }
+    setDay(nextDay);
+    setWeek(nextWeek);
+
     setUserData((prev) => {
       const isNewDay = prev.lastWorkoutDate !== today;
-      let nextDay = day + 1;
-      let nextWeek = week;
-      if (nextDay > 4) {
-        nextDay = 1;
-        if (nextWeek < 8) nextWeek = (nextWeek + 1) as WeekLevel;
-      }
-      setDay(nextDay);
-      setWeek(nextWeek);
-
       return {
         ...prev,
         currentWeek: nextWeek,
@@ -1189,6 +1519,10 @@ const App: React.FC = () => {
     }));
   };
 
+  if (!isAuthenticated) {
+    return <AuthScreen onLogin={() => setIsAuthenticated(true)} />;
+  }
+
   if (isWorkoutMode) {
     return (
       <WorkoutScreen
@@ -1200,11 +1534,42 @@ const App: React.FC = () => {
     );
   }
 
+  const currentTheme = userData.theme || "oscuro";
+
   return (
-    <div className="h-dvh bg-black text-white flex flex-col font-sans selection:bg-emerald-500/30">
+    <div className={`h-dvh flex flex-col font-sans transition-colors duration-500 selection:bg-emerald-500/30 font-inter ${currentTheme === 'medio' ? 'bg-[#0B1121] text-[#F8FAFC]' : 'bg-black text-white'}`}>
+      <style>{`
+        ${currentTheme === 'medio' ? `
+          .bg-black { background-color: #0B1121 !important; }
+          .bg-black\\/80 { background-color: rgba(11, 17, 33, 0.85) !important; }
+          .bg-zinc-950 { background-color: #111827 !important; }
+          .bg-zinc-950\\/95 { background-color: rgba(17, 24, 39, 0.95) !important; }
+          .bg-zinc-900 { background-color: #1E293B !important; border-color: #334155 !important; }
+          .bg-zinc-900\\/50 { background-color: rgba(30, 41, 59, 0.5) !important; border-color: #334155 !important; }
+          .text-white { color: #F8FAFC !important; }
+          .text-zinc-400 { color: #94A3B8 !important; }
+          .text-zinc-500 { color: #64748B !important; }
+          .border-zinc-800, .border-zinc-700, .border-white\\/5, .border-white\\/10 { border-color: #334155 !important; }
+          .bg-white\\/5 { background-color: rgba(255, 255, 255, 0.03) !important; }
+          .bg-white\\/10 { background-color: rgba(255, 255, 255, 0.06) !important; }
+          /* Shift Emerald shades to Modern Cyan */
+          .text-emerald-500 { color: #0EA5E9 !important; }
+          .text-emerald-400 { color: #38BDF8 !important; }
+          .bg-emerald-500 { background-color: #0EA5E9 !important; color: #FFFFFF !important; }
+          .bg-emerald-900\\/40 { background-color: rgba(14, 165, 233, 0.15) !important; }
+          .border-emerald-500\\/30 { border-color: rgba(14, 165, 233, 0.3) !important; }
+          .shadow-\\[0_0_10px_rgba\\(16\\,185\\,129\\,0\\.2\\)\\] { box-shadow: 0 0 10px rgba(14,165,233,0.3) !important; }
+          .shadow-\\[0_0_20px_rgba\\(16\\,185\\,129\\,0\\.4\\)\\] { box-shadow: 0 0 20px rgba(14,165,233,0.4) !important; }
+        ` : `
+          .bg-black { background-color: #000000; }
+        `}
+      `}</style>
       <div className="flex-1 overflow-hidden relative">
         {activeTab === "home" && (
           <StatsView userData={userData} onWaterUpdate={handleWaterUpdate} />
+        )}
+        {activeTab === "settings" && (
+          <SettingsView userData={userData} setUserData={setUserData} />
         )}
         {activeTab === "workout" && (
           <div className="h-full flex flex-col relative w-full overflow-hidden">

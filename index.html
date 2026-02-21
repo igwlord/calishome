@@ -7,6 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -15,13 +16,12 @@
     <title>Calis.Home</title>
 
     <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
 
     <!-- Icons -->
-    <link rel="icon" type="image/png" href="calishome.png" />
-    <link rel="apple-touch-icon" href="calishome.png" />
+    <link rel="icon" type="image/png" href="/calishome.png" />
+    <link rel="apple-touch-icon" href="/calishome.png" />
 
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       /* Mobile optimizations */
       body {
@@ -120,7 +120,8 @@
           "lucide-react": "https://esm.sh/lucide-react@^0.574.0",
           "react": "https://esm.sh/react@^19.2.4",
           "react/": "https://esm.sh/react@^19.2.4/",
-          "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+          "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+          "recharts": "https://esm.sh/recharts@^2.15.0"
         }
       }
     </script>
@@ -134,7 +135,7 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker
-            .register("./sw.js")
+            .register("/sw.js")
             .then((reg) => console.log("SW registered"))
             .catch((err) => console.log("SW failed", err));
         });

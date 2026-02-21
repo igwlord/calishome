@@ -16,7 +16,6 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
 }) => {
   const [glasses, setGlasses] = useState(initialGlasses);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     setGlasses(initialGlasses);
@@ -43,91 +42,74 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
   const progress = (currentVolume / GOAL_VOLUME_ML) * 100;
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-6 relative overflow-hidden shadow-lg transition-all duration-300">
-      <div 
-        className="flex justify-between items-end mb-4 relative z-10 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5 relative overflow-hidden shadow-lg transition-all duration-300">
+      <div className="flex justify-between items-end mb-4 relative z-10">
         <div>
           <h3 className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-1">
             Hidratación
           </h3>
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-black text-white leading-none">
+            <span className="text-2xl font-black text-white leading-none">
               {(currentVolume / 1000).toFixed(2)}
             </span>
-            <span className="text-sm font-bold text-zinc-500">/ 2.5L</span>
+            <span className="text-xs font-bold text-zinc-500">/ 2.5L</span>
           </div>
-          {!isExpanded && (
-            <p className="text-xs text-blue-400 mt-2">
-              Faltan {TOTAL_GLASSES - glasses} vasos para la meta diaria. Toca para expandir.
-            </p>
-          )}
         </div>
-        <div className="text-right flex flex-col items-end gap-2">
-           <span
-             className={`text-xl font-black ${progress >= 100 ? "text-cyan-400" : "text-blue-500"}`}
-           >
+        <div className="text-right">
+           <span className={`text-lg font-black ${progress >= 100 ? "text-cyan-400 animate-pulse" : "text-blue-500"}`}>
              {Math.round(progress)}%
            </span>
         </div>
       </div>
 
-      {isExpanded && (
-        <div className="grid grid-cols-5 gap-y-4 gap-x-2 sm:gap-4 relative z-10 mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
-          {Array.from({ length: TOTAL_GLASSES }).map((_, i) => {
-            const isFilled = i < glasses;
-            return (
-              <button
-                key={i}
-                onClick={() => handleGlassClick(i)}
-                className={`
-                  group relative w-full aspect-[3/4] rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 touch-manipulation
-                  ${
-                    isFilled
-                      ? "bg-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)] border border-blue-500/30"
-                      : "bg-zinc-800/50 border border-white/5 hover:bg-zinc-800"
-                  }
-                `}
-                aria-label={`Vaso ${i + 1}`}
-              >
-                {/* Liquid Animation */}
-                {isFilled && (
-                  <div className="absolute inset-0 bg-blue-500/20 rounded-xl overflow-hidden">
-                    <div className="absolute bottom-0 left-0 w-full bg-blue-500 h-full opacity-40 animate-pulse" />
-                  </div>
-                )}
+      <div className="flex gap-2 relative z-10 w-full justify-between items-center">
+        {Array.from({ length: TOTAL_GLASSES }).map((_, i) => {
+          const isFilled = i < glasses;
+          return (
+            <button
+              key={i}
+              onClick={() => handleGlassClick(i)}
+              className={`
+                group relative flex-1 aspect-[6/10] rounded-b-[8px] rounded-t-[2px] border-[1.5px] transition-all duration-300 active:scale-90 touch-manipulation overflow-hidden bg-white/5 backdrop-blur-sm
+                ${
+                  isFilled
+                    ? "border-blue-500/50 shadow-[0_5px_15px_rgba(59,130,246,0.25)]"
+                    : "border-white/10 hover:border-white/20 shadow-inner"
+                }
+              `}
+              aria-label={`Vaso ${i + 1}`}
+            >
+              {/* Liquid */}
+              <div 
+                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-[600ms] transform origin-bottom z-0 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
+                style={{ 
+                  height: '95%',
+                  transform: isFilled ? 'scaleY(1)' : 'scaleY(0)',
+                  opacity: isFilled ? 1 : 0
+                }}
+              />
+              {/* Bubble particles (simulated via multiple tiny divs inside liquid) */}
+              {isFilled && (
+                <div className="absolute bottom-1 right-1 w-1 h-1 bg-white/40 rounded-full animate-pulse" />
+              )}
+              {isFilled && (
+                <div className="absolute bottom-3 left-1 w-0.5 h-0.5 bg-white/60 rounded-full animate-bounce" />
+              )}
+              
+              {/* Vertical Glass Reflection */}
+              <div className="absolute top-[5%] left-[15%] w-[10%] h-[90%] bg-gradient-to-b from-white/30 to-transparent rounded-full blur-[1px] pointer-events-none z-10" />
+              <div className="absolute top-[10%] right-[10%] w-[5%] h-[40%] bg-gradient-to-b from-white/20 to-transparent rounded-full blur-[1px] pointer-events-none z-10" />
+            </button>
+          );
+        })}
+      </div>
 
-                <GlassWater
-                  size={24}
-                  strokeWidth={2.5}
-                  className={`relative z-10 transition-colors duration-300 ${isFilled ? "text-cyan-300" : "text-zinc-600 group-hover:text-zinc-500"}`}
-                />
-
-                {isFilled && i === glasses - 1 && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_5px_cyan] animate-ping" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Celebration Overlay */}
       {showCelebration && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="text-center animate-in zoom-in spin-in-3 duration-500">
-            <Trophy
-              size={48}
-              className="text-yellow-400 mx-auto mb-2 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]"
-            />
-            <h4 className="text-white font-black text-xl tracking-tight">
-              ¡META LOGRADA!
-            </h4>
-            <p className="text-zinc-300 text-xs font-bold uppercase mt-1">
-              Hidratación al 100%
-            </p>
-          </div>
+        <div className="absolute inset-0 bg-cyan-900/90 z-20 flex flex-col items-center justify-center animate-in fade-in rounded-3xl backdrop-blur-sm">
+          <Trophy className="text-white w-10 h-10 mb-2 animate-bounce" />
+          <span className="text-white font-black tracking-widest uppercase text-sm">
+            ¡Meta Lograda!
+          </span>
         </div>
       )}
     </div>
