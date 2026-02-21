@@ -503,53 +503,53 @@ const BottomNav: React.FC<{ activeTab: Tab; onChange: (t: Tab) => void }> = ({
   onChange,
 }) => (
   <div className="fixed bottom-0 left-0 w-full bg-black/80 backdrop-blur-2xl border-t border-white/10 pb-safe-bottom z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-    <div className="flex justify-around items-center h-20 max-w-md mx-auto">
+    <div className="flex justify-around items-center h-16 sm:h-20 max-w-md mx-auto">
       <button
         onClick={() => onChange("home")}
-        className={`flex flex-col items-center justify-center w-full h-full space-y-1.5 transition-colors duration-300 group ${activeTab === "home" ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-300 group ${activeTab === "home" ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}
       >
         <div
           className={`p-1.5 rounded-xl transition-all duration-300 ${activeTab === "home" ? "bg-white/10" : "bg-transparent"}`}
         >
           <Home
-            size={24}
+            size={22}
             strokeWidth={activeTab === "home" ? 2.5 : 2}
             className="transition-transform group-active:scale-90"
           />
         </div>
-        <span className="text-[10px] font-bold tracking-widest">INICIO</span>
+        <span className="text-[10px] font-bold tracking-widest leading-none mt-1">INICIO</span>
       </button>
 
       <button
         onClick={() => onChange("workout")}
-        className={`flex flex-col items-center justify-center w-full h-full space-y-1.5 transition-colors duration-300 group ${activeTab === "workout" ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-300 group ${activeTab === "workout" ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}
       >
         <div
           className={`p-1.5 rounded-xl transition-all duration-300 ${activeTab === "workout" ? "bg-white/10" : "bg-transparent"}`}
         >
           <Dumbbell
-            size={24}
+            size={22}
             strokeWidth={activeTab === "workout" ? 2.5 : 2}
             className="transition-transform group-active:scale-90"
           />
         </div>
-        <span className="text-[10px] font-bold tracking-widest">RUTINA</span>
+        <span className="text-[10px] font-bold tracking-widest leading-none mt-1">RUTINA</span>
       </button>
 
       <button
         onClick={() => onChange("settings")}
-        className={`flex flex-col items-center justify-center w-full h-full space-y-1.5 transition-colors duration-300 group ${activeTab === "settings" ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}
+        className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-300 group ${activeTab === "settings" ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}
       >
         <div
           className={`p-1.5 rounded-xl transition-all duration-300 ${activeTab === "settings" ? "bg-white/10" : "bg-transparent"}`}
         >
           <Settings
-            size={24}
+            size={22}
             strokeWidth={activeTab === "settings" ? 2.5 : 2}
             className="transition-transform group-active:scale-90"
           />
         </div>
-        <span className="text-[10px] font-bold tracking-widest">AJUSTES</span>
+        <span className="text-[10px] font-bold tracking-widest leading-none mt-1">AJUSTES</span>
       </button>
     </div>
   </div>
@@ -895,11 +895,13 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       className={`h-dvh w-full flex flex-col relative transition-colors duration-700 overflow-hidden landscape:flex-row landscape:items-center landscape:justify-center ${isResting ? "bg-zinc-950" : `bg-gradient-to-b ${theme.gradient} to-black`}`}
     >
       {showGuide && (
-        <ExerciseGuideModal
-          exercise={activeModalExercise}
-          onClose={() => setShowGuide(false)}
-          theme={theme}
-        />
+        <div className="absolute inset-0 z-[100]">
+          <ExerciseGuideModal
+            exercise={activeModalExercise}
+            onClose={() => setShowGuide(false)}
+            theme={theme}
+          />
+        </div>
       )}
 
       {/* EXIT CONFIRMATION MODAL */}
@@ -982,11 +984,11 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       </div>
 
       {/* Timer & Main Visual - Adaptive Sizing */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-0 landscape:flex-1 landscape:mt-12 landscape:h-full landscape:justify-center">
-        <div className="relative flex items-center justify-center w-full max-w-[300px] sm:max-w-[400px]">
+      <div className="flex-1 flex flex-col items-center justify-center p-2 mt-2 sm:p-4 sm:mt-0 min-h-0 landscape:flex-1 landscape:mt-12 landscape:h-full landscape:justify-center">
+        <div className="relative flex items-center justify-center w-full h-full max-w-[240px] max-h-[240px] sm:max-w-[340px] sm:max-h-[340px] aspect-square">
           <button
             onClick={toggleTimer}
-            className="relative w-full aspect-square flex items-center justify-center mb-6 landscape:mb-0 active:scale-[0.98] transition-transform touch-manipulation outline-none"
+            className="relative w-full h-full flex items-center justify-center mb-2 landscape:mb-0 active:scale-[0.98] transition-transform touch-manipulation outline-none"
           >
             <svg className="absolute inset-0 w-full h-full -rotate-90 drop-shadow-2xl overflow-visible">
               <circle
@@ -997,23 +999,24 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
                 strokeWidth="6%"
                 fill="transparent"
               />
+              {/* Animated Glow Ring */}
               <circle
                 cx="50%"
                 cy="50%"
                 r="46%"
                 stroke="currentColor"
-                strokeWidth="6%"
+                strokeWidth={isActive ? "8%" : "6%"}
                 fill="transparent"
                 strokeDasharray="289%"
                 strokeDashoffset={`${289 * (pct / 100)}%`}
                 strokeLinecap="round"
-                className={`transition-all duration-1000 ease-linear ${isResting ? "text-sky-500 drop-shadow-[0_0_15px_rgba(14,165,233,0.3)]" : theme.text} ${isActive ? (timeLeft <= 4 ? "animate-pulse-glow-fast" : "animate-pulse-glow") : ""}`}
+                className={`transition-all duration-1000 ease-linear ${isResting ? "text-sky-500/80 drop-shadow-[0_0_20px_rgba(14,165,233,0.5)]" : `${theme.text} drop-shadow-[0_0_15px_rgba(16,185,129,0.4)] opacity-80`} ${isActive ? (timeLeft <= 3 ? "animate-pulse" : "animate-pulse-glow") : ""}`}
               />
             </svg>
 
             <div className="flex flex-col items-center z-10">
               <span
-                className={`text-6xl sm:text-8xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg ${timeLeft < 4 && isActive ? "animate-pulse text-red-500" : ""}`}
+                className={`text-6xl sm:text-8xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-2xl transition-all duration-300 ${timeLeft <= 3 && isActive ? "scale-110 text-red-500 font-bold" : ""}`}
               >
                 {timeLeft}
               </span>
@@ -1032,8 +1035,8 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       </div>
 
       {/* Info & Footer Controls - Adaptive Layout */}
-      <div className="w-full flex flex-col items-center landscape:w-1/2 landscape:h-full landscape:justify-center landscape:pr-8 landscape:pl-4">
-        <div className="text-center w-full max-w-sm flex flex-col items-center animate-in slide-in-from-bottom-4 fade-in duration-500 px-4 mb-4 landscape:mb-8">
+      <div className="w-full flex flex-col items-center flex-1 min-h-0 justify-end pb-4 pt-2 landscape:w-1/2 landscape:h-full landscape:justify-center landscape:pr-8 landscape:pl-4">
+        <div className="text-center w-full max-w-sm flex flex-col items-center animate-in slide-in-from-bottom-4 fade-in duration-500 px-4 mb-2 sm:mb-4 landscape:mb-8 shrink-0">
           <div className="flex flex-col items-center justify-center gap-3 mb-2 w-full relative px-2">
             <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight text-center line-clamp-2">
               {isTransitionRest
@@ -1086,7 +1089,7 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
           </div>
         </div>
 
-        <div className="p-6 pb-safe-bottom bg-gradient-to-t from-black via-black/90 to-transparent z-20 flex gap-4 w-full max-w-md mx-auto shrink-0 landscape:bg-none landscape:p-0 landscape:w-full">
+        <div className="p-4 sm:p-6 pb-safe-bottom bg-gradient-to-t from-black via-black/90 to-transparent z-20 flex gap-3 sm:gap-4 w-full max-w-md mx-auto shrink-0 landscape:bg-none landscape:p-0 landscape:w-full mt-auto">
           <button
             onClick={handlePrev}
             disabled={currentExIndex === 0 && phase === "getReady"}
@@ -1122,7 +1125,9 @@ const TrainingView: React.FC<{
   onResetDay: () => void;
   selectedEx: Exercise | null;
   setSelectedEx: (ex: Exercise | null) => void;
-}> = ({ week, setWeek, day, setDay, userData, onToggleCheck, onResetDay, selectedEx, setSelectedEx }) => {
+  onStartWorkout: () => void;
+  onMarkAllComplete: () => void;
+}> = ({ week, setWeek, day, setDay, userData, onToggleCheck, onResetDay, selectedEx, setSelectedEx, onStartWorkout, onMarkAllComplete }) => {
   const dailyPlan = useMemo(() => getDailyPlan(week, day), [week, day]);
   const theme = THEMES[week];
 
@@ -1131,7 +1136,7 @@ const TrainingView: React.FC<{
   }, [userData.history, week, day]);
 
   return (
-    <div className="h-full flex flex-col p-6 overflow-y-auto pb-48 sm:pb-40 pt-safe-top">
+    <div className="h-full flex flex-col px-4 sm:px-6 overflow-y-auto pb-32 pt-safe-top">
       {selectedEx && (
         <ExerciseGuideModal
           exercise={selectedEx}
@@ -1141,31 +1146,31 @@ const TrainingView: React.FC<{
       )}
 
       {/* Week Navigation */}
-      <div className="flex items-center justify-between mb-8 mt-4 max-w-sm mx-auto w-full">
+      <div className="flex items-center justify-between mb-4 mt-4 max-w-sm mx-auto w-full px-2">
         <button 
           onClick={() => setWeek(Math.max(1, week - 1) as WeekLevel)}
-          className="w-12 h-12 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-full active:scale-95 text-zinc-400 disabled:opacity-30 disabled:pointer-events-none transition-transform"
+          className="w-11 h-11 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-full active:scale-95 text-zinc-400 disabled:opacity-30 disabled:pointer-events-none transition-transform"
           disabled={week === 1}
         >
-           <ChevronRight className="rotate-180" size={24} />
+           <ChevronRight className="rotate-180" size={20} />
         </button>
-        <div className="text-center">
-           <h2 className="text-2xl font-black italic tracking-tighter uppercase text-white">Semana {week}</h2>
-           <p className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase mt-0.5">Progreso General</p>
+        <div className="text-center flex flex-col justify-center">
+           <h2 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-none">Semana {week}</h2>
+           <p className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase mt-1">Progreso General</p>
         </div>
         <button 
           onClick={() => setWeek(Math.min(8, week + 1) as WeekLevel)}
-          className="w-12 h-12 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-full active:scale-95 text-zinc-400 disabled:opacity-30 disabled:pointer-events-none transition-transform"
+          className="w-11 h-11 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-full active:scale-95 text-zinc-400 disabled:opacity-30 disabled:pointer-events-none transition-transform"
           disabled={week === 8 || week >= userData.currentWeek}
         >
-           <ChevronRight size={24} />
+           <ChevronRight size={20} />
         </button>
       </div>
 
       {/* Day Progress Bubble Navigation */}
-      <div className="relative w-full max-w-[280px] mx-auto mb-10 h-12 flex items-center justify-between px-2">
+      <div className="relative w-full max-w-[280px] mx-auto mb-6 h-12 flex items-center justify-between px-2">
         {/* Background Line */}
-        <div className="absolute top-1/2 left-6 right-6 h-1.5 -translate-y-1/2 bg-zinc-900 border-y border-zinc-800 z-0 rounded-full" />
+        <div className="absolute top-1/2 left-6 right-6 h-1 -translate-y-1/2 bg-zinc-900 border-y border-zinc-800 z-0 rounded-full" />
         
         {[1, 2, 3, 4].map((d) => {
           // Completed = any time this week+day appears in history (any date)
@@ -1176,54 +1181,54 @@ const TrainingView: React.FC<{
              <button
                key={d}
                onClick={() => setDay(d)}
-               className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center font-black transition-all duration-300 transform
-                  ${isDayComp ? "bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]" : 
-                    isSelected ? "bg-white text-black scale-110 shadow-[0_0_20px_rgba(255,255,255,0.3)] ring-4 ring-black" : 
-                    "bg-zinc-900 border-2 border-zinc-700 text-zinc-500 shadow-lg hover:border-zinc-500"}
+               className={`relative z-10 w-11 h-11 text-base rounded-full flex items-center justify-center font-black transition-all duration-300 transform
+                  ${isDayComp ? "bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]" : 
+                    isSelected ? "bg-white text-black scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)] ring-2 ring-black" : 
+                    "bg-zinc-900 border-2 border-zinc-700 text-zinc-500 shadow-md hover:border-zinc-500"}
                `}
              >
-               {isDayComp ? <Check size={20} strokeWidth={4} /> : d}
+               {isDayComp ? <Check size={18} strokeWidth={4} /> : d}
              </button>
           )
         })}
       </div>
 
       {/* Main Routine Card */}
-      <div className={`relative bg-gradient-to-br ${theme.gradient} to-black p-1 rounded-[32px] shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all duration-500 mx-auto w-full max-w-sm mb-4`}>
-         <div className="bg-zinc-950/95 backdrop-blur-3xl rounded-[28px] p-5 sm:p-6 text-center relative overflow-hidden border border-white/5">
+      <div className={`relative bg-gradient-to-br ${theme.gradient} to-black p-[2px] rounded-[28px] shadow-[0_10px_30px_rgba(0,0,0,0.8)] transition-all duration-500 mx-auto w-full max-w-sm mb-3`}>
+         <div className="bg-zinc-950/95 backdrop-blur-3xl rounded-[26px] p-4 text-center relative overflow-hidden border border-white/5 flex flex-col h-full">
             
             {/* Background Icon */}
-            <Dumbbell className="absolute -bottom-10 -right-10 w-48 h-48 text-white/5 rotate-[-15deg] pointer-events-none" />
+            <Dumbbell className="absolute -bottom-8 -right-8 w-40 h-40 text-white/5 rotate-[-15deg] pointer-events-none" />
 
             <div className="relative z-10">
-              <span className={`text-[10px] font-bold tracking-widest uppercase ${theme.text} bg-white/5 px-3 py-1 rounded-full mb-3 inline-block shadow-inner`}>
+              <span className={`text-[10px] font-bold tracking-widest uppercase ${theme.text} bg-white/5 px-2.5 py-1 rounded-full mb-3 inline-block shadow-inner`}>
                  Día {day} • {dailyPlan.tag}
               </span>
               <h3 className="text-3xl sm:text-4xl font-black text-white mb-2 leading-none uppercase tracking-tight">{dailyPlan.title}</h3>
-              <p className="text-zinc-400 text-xs font-bold mb-6 flex items-center justify-center gap-2">
+              <p className="text-zinc-400 text-[10px] sm:text-xs font-bold mb-3.5 flex items-center justify-center gap-1.5">
                  <Clock size={12} className="text-zinc-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (typeof ex.sets === 'number' ? ex.sets : 1) * (45 + (userData.restSeconds || 15)) / 60, 0))} MIN
                  <span className="text-zinc-700">•</span>
-                 <Target size={12} className="text-zinc-500"/> {dailyPlan.exercises.length} EJERCICIOS
+                 <Target size={12} className="text-zinc-500"/> {dailyPlan.exercises.length} EJEC
                  <span className="text-zinc-700">•</span>
                  <Flame size={12} className="text-orange-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0))} kcal
               </p>
 
               {/* Compact List inside Card */}
-              <div className="flex flex-col gap-2.5 mb-2 relative">
+              <div className="flex flex-col gap-1.5 relative">
                   {/* Completion Overlay matching the card */}
                   {isRoutineComplete && (
                     <div className="absolute inset-x-0 inset-y-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-[2px] rounded-2xl border border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.1)] animate-in fade-in duration-500">
-                      <div className="w-14 h-14 bg-emerald-500/20 rounded-full flex items-center justify-center mb-2">
-                        <Check className="w-8 h-8 text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)]" strokeWidth={3} />
+                      <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mb-2">
+                        <Check className="w-6 h-6 text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)]" strokeWidth={3} />
                       </div>
-                      <h3 className="text-xl font-black text-white px-2 text-center tracking-tighter uppercase drop-shadow-md mb-3">
+                      <h3 className="text-lg font-black text-white px-2 text-center tracking-tighter uppercase drop-shadow-md mb-3">
                         ¡Completado!
                       </h3>
                       <button
                         onClick={onResetDay}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-zinc-800/80 text-zinc-300 border border-zinc-600 rounded-xl text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform hover:bg-zinc-700"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800/80 text-zinc-300 border border-zinc-600 rounded-xl text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-transform hover:bg-zinc-700"
                       >
-                        <RotateCcw size={14} /> Reiniciar Día
+                        <RotateCcw size={12} /> Reiniciar Día
                       </button>
                     </div>
                   )}
@@ -1234,24 +1239,24 @@ const TrainingView: React.FC<{
                       const isCompleted = isRoutineComplete || isManuallyChecked;
                       
                       return (
-                        <div key={i} onClick={() => setSelectedEx(ex)} className={`group relative flex items-center gap-3 bg-black/40 p-2.5 sm:p-3 rounded-2xl border transition-all active:scale-[0.98] cursor-pointer overflow-hidden ${isCompleted ? "border-emerald-500/30 bg-emerald-900/10" : "border-white/5 hover:bg-zinc-900/40"}`}>
+                        <div key={i} onClick={() => setSelectedEx(ex)} className={`group relative flex items-center gap-2 bg-black/40 p-2 rounded-[14px] border transition-all active:scale-[0.98] cursor-pointer overflow-hidden ${isCompleted ? "border-emerald-500/30 bg-emerald-900/10" : "border-white/5 hover:bg-zinc-900/40"}`}>
                            
                            {isCompleted && (
                              <div className="absolute inset-0 bg-emerald-500/5 z-0 pointer-events-none" />
                            )}
 
-                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border relative z-10 ${isCompleted ? "bg-emerald-500 text-black border-transparent shadow-[0_0_10px_rgba(16,185,129,0.3)]" : `bg-zinc-900 border-white/10 ${theme.text}`}`}>
-                              {isCompleted ? <Check size={18} strokeWidth={3} /> : ex.category === "push" ? <Zap size={16} /> : ex.category === "legs" ? <Footprints size={16} /> : ex.category === "core" ? <Activity size={16} /> : <Dumbbell size={16} />}
+                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border relative z-10 ${isCompleted ? "bg-emerald-500 text-black border-transparent shadow-[0_0_10px_rgba(16,185,129,0.3)]" : `bg-zinc-900 border-white/10 ${theme.text}`}`}>
+                              {isCompleted ? <Check size={14} strokeWidth={3} /> : ex.category === "push" ? <Zap size={14} /> : ex.category === "legs" ? <Footprints size={14} /> : ex.category === "core" ? <Activity size={14} /> : <Dumbbell size={14} />}
                            </div>
                            <div className="flex-1 text-left relative z-10 min-w-0">
-                               <div className={`text-sm font-bold truncate transition-colors ${isCompleted ? "text-emerald-400" : "text-zinc-200 group-hover:text-white"}`}>{ex.name}</div>
-                               <div className={`text-[10px] uppercase font-bold tracking-wider truncate mt-0.5 ${isCompleted ? "text-emerald-500/70" : "text-zinc-500"}`}>
+                               <div className={`text-xs font-bold truncate transition-colors leading-tight ${isCompleted ? "text-emerald-400" : "text-zinc-200 group-hover:text-white"}`}>{ex.name}</div>
+                               <div className={`text-[9px] uppercase font-bold tracking-widest truncate ${isCompleted ? "text-emerald-500/70" : "text-zinc-500"}`}>
                                  {ex.sets} × {ex.reps} {isCompleted && "• HECHO"}
                                </div>
                            </div>
                            
-                           <button onClick={(e) => { e.stopPropagation(); onToggleCheck(ex.name); }} className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors border ${isCompleted ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:bg-white/10"}`}>
-                              {isCompleted ? <RotateCcw size={14} /> : <Check size={14} />}
+                           <button onClick={(e) => { e.stopPropagation(); onToggleCheck(ex.name); }} className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors border ${isCompleted ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:bg-white/10"}`}>
+                              {isCompleted ? <RotateCcw size={12} /> : <Check size={12} />}
                            </button>
                         </div>
                       );
@@ -1260,6 +1265,24 @@ const TrainingView: React.FC<{
             </div>
          </div>
       </div>
+
+      {/* Action Buttons Integrated into Scroll Flow */}
+      {!selectedEx && (
+        <div className="w-full max-w-sm mx-auto flex gap-3 justify-center z-10 shrink-0 mt-2">
+          <button
+            onClick={onMarkAllComplete}
+            className="flex-1 py-3 sm:py-3.5 bg-zinc-900/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 font-bold rounded-[14px] hover:bg-zinc-800 transition-colors active:scale-95 text-[10px] sm:text-xs tracking-widest flex items-center justify-center gap-1.5 shadow-xl"
+          >
+             <Check size={16} strokeWidth={3} /> COMPLETAR
+          </button>
+          <button
+            onClick={onStartWorkout}
+            className="flex-[1.4] py-3 sm:py-3.5 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black rounded-[14px] hover:brightness-110 transition-all active:scale-95 text-[11px] sm:text-sm tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 border-[2px] border-black ring-1 ring-emerald-500/50"
+          >
+             <Play size={16} fill="black" /> INICIAR RUTINA
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -1807,7 +1830,9 @@ const AppInner: React.FC = () => {
 
   // Check streak on load
   useEffect(() => {
-    if (userData.lastWorkoutDate) {
+    if (userData.history.length === 0 && userData.streak > 0) {
+      setUserData((prev) => ({ ...prev, streak: 0 }));
+    } else if (userData.lastWorkoutDate) {
       const last = new Date(userData.lastWorkoutDate);
       const diff = Math.floor(
         (new Date().getTime() - last.getTime()) / (1000 * 3600 * 24),
@@ -2010,22 +2035,37 @@ const AppInner: React.FC = () => {
         `}
       `}</style>
       
-      {/* PWA Update Banner */}
-      {updateAvailable && (
-        <div className="fixed top-0 left-0 right-0 z-[150] bg-emerald-600 border-b border-emerald-400 p-3 pt-safe-top shadow-xl flex items-center justify-between text-white animate-in slide-in-from-top-full duration-500">
-          <div className="flex items-center gap-2">
-            <RefreshCw size={18} className="animate-spin-slow" />
-            <div>
-              <p className="text-sm font-black uppercase tracking-wider leading-tight">¡Nueva Versión!</p>
-              <p className="text-[10px] font-bold opacity-80 uppercase">Actualización disponible</p>
-            </div>
+      {/* GLOBAL TOP BANNER (Unified Notification System) */}
+      {(updateAvailable || workoutMode === 'paused') && (
+        <div className={`fixed top-0 left-0 right-0 z-[150] pt-safe-top flex items-center justify-center animate-in slide-in-from-top-full duration-300 shadow-xl backdrop-blur-md ${
+          updateAvailable ? "bg-emerald-600/95 border-b border-emerald-400/50" : "bg-amber-500/95 border-b border-amber-400/50"
+        }`}>
+          <div className="w-full max-w-md px-4 py-2.5 flex items-center justify-between gap-3 text-black">
+            {updateAvailable ? (
+              <>
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <RefreshCw size={14} className="animate-spin-slow shrink-0 text-white" />
+                  <span className="text-xs font-black uppercase tracking-widest text-white truncate">Actualización Disponible</span>
+                </div>
+                <button 
+                  onClick={updateApp}
+                  className="shrink-0 bg-white text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-sm"
+                >
+                  Instalar
+                </button>
+              </>
+            ) : workoutMode === 'paused' ? (
+              <button 
+                onClick={() => setWorkoutMode('active')}
+                className="flex items-center justify-center gap-2 w-full active:scale-[0.98] transition-transform"
+              >
+                <div className="w-5 h-5 bg-black rounded-full flex items-center justify-center shrink-0">
+                  <Play size={10} fill="white" className="text-white ml-0.5" />
+                </div>
+                <span className="text-xs font-black uppercase tracking-wider truncate">Retomar Entrenamiento</span>
+              </button>
+            ) : null}
           </div>
-          <button 
-            onClick={updateApp}
-            className="bg-white text-emerald-700 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 shadow-lg"
-          >
-            Actualizar
-          </button>
         </div>
       )}
 
@@ -2044,13 +2084,17 @@ const AppInner: React.FC = () => {
 
       <div className="flex-1 overflow-hidden relative">
         {activeTab === "home" && (
-          <StatsView userData={userData} onWaterUpdate={handleWaterUpdate} />
+          <div className="absolute inset-0 animate-in slide-in-from-left-4 fade-in duration-300">
+            <StatsView userData={userData} onWaterUpdate={handleWaterUpdate} />
+          </div>
         )}
         {activeTab === "settings" && (
-          <SettingsView userData={userData} setUserData={setUserData} />
+          <div className="absolute inset-0 animate-in slide-in-from-right-4 fade-in duration-300">
+            <SettingsView userData={userData} setUserData={setUserData} />
+          </div>
         )}
         {activeTab === "workout" && (
-          <div className="h-full flex flex-col relative w-full overflow-hidden">
+          <div className="absolute inset-0 flex flex-col relative w-full overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 h-full">
             <TrainingView
               week={week}
               setWeek={setWeek}
@@ -2061,36 +2105,11 @@ const AppInner: React.FC = () => {
               onResetDay={handleResetDay}
               selectedEx={selectedEx}
               setSelectedEx={setSelectedEx}
+              onStartWorkout={() => setWorkoutMode('active')}
+              onMarkAllComplete={handleMarkAllComplete}
             />
             
-            {/* Paused workout banner */}
-            {workoutMode === 'paused' && (
-              <button
-                onClick={() => setWorkoutMode('active')}
-                className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-amber-500/90 text-black font-black rounded-2xl shadow-[0_4px_20px_rgba(245,158,11,0.4)] active:scale-95 transition-transform animate-pulse text-sm tracking-wider"
-              >
-                <Play size={16} fill="black" /> RETOMAR ENTRENAMIENTO
-              </button>
-            )}
-
-            <div className="absolute bottom-6 sm:bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-3 sm:px-6 pb-20 z-50 pointer-events-none flex gap-2.5 sm:gap-3 justify-center">
-              {workoutMode === 'off' && !selectedEx && (
-                <>
-                  <button
-                    onClick={handleMarkAllComplete}
-                    className="flex-1 py-3 bg-zinc-900/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 font-bold rounded-2xl hover:bg-zinc-800 transition-colors active:scale-95 text-[10px] sm:text-xs tracking-widest pointer-events-auto flex flex-col items-center justify-center gap-1 shadow-xl"
-                  >
-                     <Check size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" /> COMPLETAR TODA
-                  </button>
-                  <button
-                    onClick={() => setWorkoutMode('active')}
-                    className="flex-[1.2] py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black rounded-2xl hover:brightness-110 transition-all active:scale-95 text-xs sm:text-sm tracking-widest pointer-events-auto shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-1.5 border-[3px] border-black ring-2 ring-emerald-500/50"
-                  >
-                     <Play size={18} fill="black" className="sm:w-[20px] sm:h-[20px]" /> INICIAR RUTINA
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Paused workout banner removed: handling merged into TOP BANNER */}
           </div>
         )}
       </div>

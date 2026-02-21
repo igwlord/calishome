@@ -56,11 +56,11 @@ const ToastItem: React.FC<{ toast: ToastItem; onRemove: (id: number) => void }> 
 
   return (
     <div
-      className={`w-full max-w-sm mx-auto px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-2xl flex flex-col gap-2 transition-all duration-300 ${c.bg} ${c.border} ${exiting ? 'opacity-0 -translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
+      className={`w-full px-4 py-2.5 border-b backdrop-blur-md shadow-lg flex flex-col gap-2 transition-all duration-300 pointer-events-auto ${c.bg} ${c.border} ${exiting ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-center gap-3 max-w-md mx-auto w-full">
         <div className={`shrink-0 ${c.icon}`}>{ICONS[toast.type]}</div>
-        <span className={`text-sm font-bold flex-1 ${c.text}`}>{toast.message}</span>
+        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-widest truncate flex-1 ${c.text}`}>{toast.message}</span>
         {!isConfirm && (
           <button onClick={() => { setExiting(true); setTimeout(() => onRemove(toast.id), 300); }} className="text-zinc-500 hover:text-white p-1">
             <X size={14} />
@@ -68,11 +68,11 @@ const ToastItem: React.FC<{ toast: ToastItem; onRemove: (id: number) => void }> 
         )}
       </div>
       {isConfirm && (
-        <div className="flex gap-2 mt-1">
-          <button onClick={handleConfirm} className={`flex-1 py-2 rounded-xl font-bold text-sm active:scale-95 transition-transform ${c.bg} border ${c.border} ${c.text}`}>
+        <div className="flex justify-center gap-2 mt-1 max-w-md mx-auto w-full">
+          <button onClick={handleConfirm} className={`flex-1 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${c.bg} border ${c.border} ${c.text}`}>
             {toast.confirmText || 'Confirmar'}
           </button>
-          <button onClick={handleCancel} className="flex-1 py-2 rounded-xl font-bold text-sm bg-zinc-800 text-zinc-400 border border-zinc-700 active:scale-95 transition-transform">
+          <button onClick={handleCancel} className="flex-1 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest bg-zinc-800/80 text-zinc-400 border border-zinc-700 active:scale-95 transition-transform">
             {toast.cancelText || 'Cancelar'}
           </button>
         </div>
@@ -115,10 +115,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ show, confirm }}>
       {children}
-      {/* Toast container */}
-      <div className="fixed top-0 left-0 right-0 z-[100] flex flex-col gap-2 p-4 pt-safe-top pointer-events-none">
+      {/* Toast container (Unified Top Banner System) */}
+      <div className="fixed top-0 left-0 right-0 z-[160] flex flex-col pointer-events-none pt-safe-top">
         {toasts.map(t => (
-          <div key={t.id} className="pointer-events-auto animate-in slide-in-from-top-4 fade-in duration-300">
+          <div key={t.id} className="animate-in slide-in-from-top-full duration-300 w-full pointer-events-none">
             <ToastItem toast={t} onRemove={removeToast} />
           </div>
         ))}
