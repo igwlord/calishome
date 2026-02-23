@@ -749,7 +749,7 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
           }
           return nextTime;
         });
-        if (phase === "work" && ex) {
+        if ((phase === "work" || phase === "rest") && ex) {
           setKcal((k) => k + (ex.met * 3.5 * USER_WEIGHT_KG) / 200 / 60);
         }
       }, 1000);
@@ -813,6 +813,13 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
 
   const handleSkip = () => {
     triggerHaptic(15); // Click feel
+    if (phase === "work" || phase === "rest") {
+      const ex = workoutPlan.exercises[currentExIndex];
+      // Add calories for the remaining time that was skipped
+      if (ex) {
+         setKcal((k) => k + (ex.met * 3.5 * USER_WEIGHT_KG) / 200 / 60 * timeLeft);
+      }
+    }
     setTimeLeft(0);
   };
 
@@ -1151,10 +1158,10 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
             onClick={handleSkip}
             className={`
               flex-1 h-14 rounded-2xl font-black text-lg tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.97] shadow-xl
-              ${isResting ? "bg-emerald-600 text-white shadow-emerald-900/40 hover:bg-emerald-500" : `${theme.primary} text-white ${theme.shadow} brightness-110`}
+              ${isResting ? "bg-emerald-600 text-white shadow-emerald-900/40" : `${theme.primary} text-white ${theme.shadow} brightness-110`}
             `}
           >
-            {isResting ? "EMPEZAR" : "SALTAR"}
+            {isResting ? "EMPEZAR" : "¡HECHO!"}
             <ChevronRight className="w-5 h-5 stroke-[3]" />
           </button>
         </div>
@@ -1185,7 +1192,7 @@ const TrainingView: React.FC<{
   }, [userData.history, week, day]);
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-6 overflow-y-auto pb-32 pt-safe-top">
+    <div className="h-full flex flex-col px-4 sm:px-6 overflow-y-auto pb-32 pt-safe-top mt-14">
       <AnimatePresence>
         {selectedEx && (
           <ExerciseGuideModal
@@ -1196,26 +1203,7 @@ const TrainingView: React.FC<{
         )}
       </AnimatePresence>
 
-      {/* Camino del Atleta - Fases */}
-      <div className="flex gap-3 overflow-x-auto pb-2 mt-4 snap-x hide-scrollbar scroll-smooth">
-        {/* Fase 1 (Activa) */}
-        <div className="min-w-[260px] snap-center bg-zinc-900 border border-emerald-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(52,211,153,0.1)] relative overflow-hidden flex-shrink-0 cursor-default">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
-          <p className="text-[10px] font-black tracking-widest text-emerald-500 uppercase mb-1">Fase Activa</p>
-          <h3 className="text-white font-black text-lg leading-tight uppercase tracking-tight">Fase 1: Zero Equipment</h3>
-          <p className="text-zinc-400 text-xs mt-2 font-medium">Fundamentos (8 Semanas). Domina tu cuerpo sin material.</p>
-        </div>
 
-        {/* Fase 2 (Bloqueada) */}
-        <div className="min-w-[260px] snap-center bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4 relative overflow-hidden flex-shrink-0 cursor-not-allowed">
-          <div className="absolute top-4 right-4 text-zinc-700">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          </div>
-          <p className="text-[10px] font-black tracking-widest text-zinc-600 uppercase mb-1">Próximamente</p>
-          <h3 className="text-zinc-500 font-black text-lg leading-tight uppercase tracking-tight">Fase 2: Gravedad Cero</h3>
-          <p className="text-zinc-600 text-xs mt-2 font-medium">Requiere equipamiento (Barra). Desbloquea al completar la Fase 1.</p>
-        </div>
-      </div>
 
 
       {/* Week Navigation */}
@@ -1283,7 +1271,7 @@ const TrainingView: React.FC<{
                  <span className="text-zinc-700">•</span>
                  <Target size={12} className="text-zinc-500"/> {dailyPlan.exercises.length} EJEC
                  <span className="text-zinc-700">•</span>
-                 <Flame size={12} className="text-orange-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0))} kcal
+                 <Flame size={12} className="text-orange-500"/> ~{Math.round(dailyPlan.exercises.reduce((sum, ex) => sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * (45 + (ex.restSeconds || 40)), 0))} kcal
               </p>
 
               {/* Compact List inside Card */}
@@ -1367,13 +1355,12 @@ const StatsView: React.FC<{
   onRequestWaterEdit: () => void;
 }> = ({ userData, onWaterUpdate, onRequestWaterEdit }) => {
   type HistoryEntry = { date: string; calories: number; week: number; day: number; };
-  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry[] | null>(null);
   const [showChart, setShowChart] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
 
-  // Helper to render the hydration row inside selectedEntry modal
-  const renderHydrationRow = (entry: HistoryEntry) => {
-    const entryDateIso = new Date(entry.date).toISOString().split('T')[0];
+  const renderHydrationRow = (entryDate: string) => {
+    const entryDateIso = new Date(entryDate).toISOString().split('T')[0];
     const wGoal = userData.waterGoal ?? 8;
     const todayIso = new Date().toISOString().split('T')[0];
     const isToday = entryDateIso === todayIso;
@@ -1409,11 +1396,14 @@ const StatsView: React.FC<{
   }
 
   const historyMap = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, typeof userData.history>();
     userData.history.forEach(entry => {
       const d = new Date(entry.date);
       const k = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-      map.set(k, entry);
+      if (!map.has(k)) {
+        map.set(k, []);
+      }
+      map.get(k)!.push(entry);
     });
     return map;
   }, [userData.history]);
@@ -1613,8 +1603,8 @@ const StatsView: React.FC<{
                   `}
                 >
                   {date.getDate()}
-                  {hasEntry && (
-                    <div className={`w-1.5 h-1.5 rounded-full mt-0.5 shadow-sm ${THEMES[entryData.week]?.primary || "bg-emerald-500"}`} />
+                  {hasEntry && entryData && entryData.length > 0 && (
+                    <div className={`w-1.5 h-1.5 rounded-full mt-0.5 shadow-sm ${THEMES[entryData[0].week]?.primary || "bg-emerald-500"}`} />
                   )}
                 </button>
               )
@@ -1623,36 +1613,40 @@ const StatsView: React.FC<{
         </div>
       </div>
 
-      {selectedEntry && (
+      {selectedEntry && selectedEntry.length > 0 && (
         <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in" onClick={() => setSelectedEntry(null)}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-sm relative shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-sm relative shadow-2xl overflow-y-auto max-h-[80vh]" onClick={e => e.stopPropagation()}>
             <button onClick={() => setSelectedEntry(null)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-zinc-800 text-zinc-400 rounded-full active:scale-90 transition-transform">
               <X size={16} />
             </button>
             <div className="flex items-center gap-3 mb-6">
-               <div className={`w-3 h-3 rounded-full ${THEMES[selectedEntry.week]?.primary || "bg-emerald-500"}`} />
+               <div className={`w-3 h-3 rounded-full ${THEMES[selectedEntry[0].week]?.primary || "bg-emerald-500"}`} />
                <h3 className="text-xl font-black italic tracking-tighter uppercase">Sesión Resumen</h3>
             </div>
             <div className="space-y-3">
                <div className="bg-zinc-950 p-4 rounded-2xl flex justify-between items-center border border-white/5">
-                 <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Fecha / Hora</span>
+                 <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Fecha</span>
                  <span className="text-white font-bold text-sm text-right">
-                    {new Date(selectedEntry.date).toLocaleDateString()}<br/>
-                    <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest">{new Date(selectedEntry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    {new Date(selectedEntry[0].date).toLocaleDateString()}
                  </span>
                </div>
                <div className="grid grid-cols-2 gap-3">
                  <div className="bg-zinc-950 p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
-                    <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-1.5">RUTINA</span>
-                    <span className="text-white font-black text-lg leading-none">SEMANA {selectedEntry.week} <br/><span className="text-emerald-500 text-xs uppercase tracking-widest mt-1 inline-block">DÍA {selectedEntry.day}</span></span>
+                    <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-1.5">RUTINAS</span>
+                    <span className="text-white font-black text-sm leading-tight">
+                      {selectedEntry.map(e => `S${e.week} D${e.day}`).join(' / ')}
+                    </span>
                  </div>
                  <div className="bg-zinc-950 p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
                     <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-1.5">QUEMADO</span>
-                    <span className="text-orange-500 font-black text-3xl leading-none">{Math.ceil(selectedEntry.calories)}<span className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest ml-1">kcal</span></span>
+                    <span className="text-orange-500 font-black text-3xl leading-none">
+                      {Math.ceil(selectedEntry.reduce((sum, e) => sum + e.calories, 0))}
+                      <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest ml-1">kcal</span>
+                    </span>
                  </div>
                </div>
                {/* Hydration row */}
-               {renderHydrationRow(selectedEntry)}
+               {renderHydrationRow(selectedEntry[0].date)}
             </div>
           </div>
         </div>
@@ -2041,7 +2035,7 @@ const AppInner: React.FC = () => {
     const plan = getDailyPlan(week, day);
     const estimatedKcal = Math.round(
       plan.exercises.reduce((sum, ex) =>
-        sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0)
+        sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * (45 + (ex.restSeconds || 40)), 0)
     );
     const checkKey = `${week}-${day}-${exName}`;
 
@@ -2114,7 +2108,7 @@ const AppInner: React.FC = () => {
     const plan = getDailyPlan(week, day);
     const estimatedKcal = Math.round(
       plan.exercises.reduce((sum, ex) =>
-        sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * 45, 0)
+        sum + (ex.met * 3.5 * 67 / 200 / 60) * (typeof ex.sets === 'number' ? ex.sets : 1) * (45 + (ex.restSeconds || 40)), 0)
     );
     setPendingCompletion({ calories: estimatedKcal, week, day, source: 'manual' });
   };
