@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   RefreshCw
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import WaterTracker from "./src/components/WaterTracker";
 import { ToastProvider, useToast } from "./src/components/Toast";
 import { initializeApp } from 'firebase/app';
@@ -131,6 +132,8 @@ interface Exercise {
 interface RoutineExercise extends Exercise {
   sets: number;
   reps: number | string;
+  restSeconds?: number;
+  tempo?: { down: number; pause: number; up: number };
 }
 
 interface UserData {
@@ -485,13 +488,25 @@ const getDailyPlan = (week: WeekLevel, dayNumber: number): DailyPlan => {
   const dayPlan = weekData ? weekData[dayNumber] : null;
   if (!dayPlan) return { title: "Descanso Activo", tag: "Recuperación", exercises: [{...EXERCISE_DB['rest'], sets: 1, reps: 'Libre'}] };
 
+  // Calculate dynamic rest
+  let defaultRest = 40;
+  if (week === 6 || week === 8) defaultRest = 30;
+  if (week === 7) defaultRest = 45;
+
+  // Calculate dynamic tempo for Week 3
+  const isTempoWeek = week === 3;
+  const tempoData = { down: 3, pause: 1, up: 1 };
+  const tempoExercices = ['pushups', 'squats', 'diamond_pushups', 'lunges'];
+
   return {
     title: dayPlan.title,
     tag: dayPlan.tag,
     exercises: dayPlan.exercises.map(ex => ({
       ...EXERCISE_DB[ex.id],
       sets: ex.sets,
-      reps: ex.reps
+      reps: ex.reps,
+      restSeconds: defaultRest,
+      tempo: (isTempoWeek && tempoExercices.includes(ex.id)) ? tempoData : undefined
     }))
   };
 };
@@ -562,11 +577,15 @@ const ExerciseGuideModal: React.FC<{
 }> = ({ exercise, onClose, theme }) => {
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-6 bg-black/80 backdrop-blur-sm cursor-pointer"
       onClick={onClose}
     >
-      <div
-        className={`w-full max-w-sm rounded-t-3xl sm:rounded-3xl border-t sm:border ${theme.border} shadow-2xl flex flex-col max-h-[90dvh] animate-in slide-in-from-bottom-10 duration-300 cursor-auto bg-zinc-900 overflow-hidden relative`}
+      <motion.div
+        layoutId={`exercise-${exercise.id}`}
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 50 }}
+        className={`w-full max-w-sm rounded-t-3xl sm:rounded-3xl border-t sm:border ${theme.border} shadow-2xl flex flex-col max-h-[90dvh] cursor-auto bg-zinc-900 overflow-hidden relative`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Subtle Gradient Background */}
@@ -575,16 +594,16 @@ const ExerciseGuideModal: React.FC<{
         />
 
         <div className="p-6 pb-0 flex items-start justify-between relative z-10">
-          <div>
+          <motion.div layout={`text-container-${exercise.id}`}>
             <span
               className={`text-[10px] font-bold uppercase tracking-wider border px-2 py-1 rounded-md ${theme.badge} ${theme.border}`}
             >
               {exercise.category}
             </span>
-            <h3 className="text-2xl font-black text-white mt-2 leading-none">
+            <motion.h3 layout={`title-${exercise.id}`} className="text-2xl font-black text-white mt-2 leading-none">
               {exercise.name}
-            </h3>
-          </div>
+            </motion.h3>
+          </motion.div>
           <button
             onClick={onClose}
             className="p-2 bg-white/5 text-slate-400 rounded-full hover:bg-white/10"
@@ -627,7 +646,7 @@ const ExerciseGuideModal: React.FC<{
             ENTENDIDO
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -745,7 +764,7 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
         // Always go to rest unless it's the very last set of the last exercise
         if (currentSet < totalSets || currentExIndex < workoutPlan.exercises.length - 1) {
           setPhase("rest");
-          setTimeLeft(restSeconds);
+          setTimeLeft(ex?.restSeconds || restSeconds);
           playTone(1500, "triangle", 0.1, 0.1);
           triggerHaptic(50);
         } else {
@@ -890,6 +909,36 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   // Get random tip for current exercise index
   const currentTip = sessionTips[currentExIndex % sessionTips.length];
 
+  // Tempo Logic Calculation
+  let tempoInstruction = isResting ? "DESCANSO" : "TRABAJO";
+  let tempoColor = "text-zinc-400";
+  let tempoScale = "scale-100";
+  let tempoWeight = "font-bold";
+  
+  if (phase === "work" && ex?.tempo) {
+    const elapsed = WORK_SECONDS - timeLeft;
+    const cycleTotal = ex.tempo.down + ex.tempo.pause + ex.tempo.up;
+    const cycleTime = elapsed % cycleTotal;
+    
+    if (cycleTime < ex.tempo.down) {
+      const remainingDown = ex.tempo.down - cycleTime;
+      tempoInstruction = `⬇ BAJA LENTO (${remainingDown}s)`;
+      tempoColor = "text-sky-400 shadow-sky-500";
+      tempoScale = "scale-105";
+      tempoWeight = "font-black";
+    } else if (cycleTime < ex.tempo.down + ex.tempo.pause) {
+      tempoInstruction = "⏸ SOSTÉN (1s)";
+      tempoColor = "text-amber-400 shadow-amber-500";
+      tempoScale = "scale-110";
+      tempoWeight = "font-black";
+    } else {
+      tempoInstruction = "🔥 ¡SUBE EXPLOSIVO!";
+      tempoColor = "text-emerald-400 shadow-emerald-500";
+      tempoScale = "scale-125";
+      tempoWeight = "font-black";
+    }
+  }
+
   return (
     <div
       className={`h-dvh w-full flex flex-col relative transition-colors duration-700 overflow-hidden landscape:flex-row landscape:items-center landscape:justify-center ${isResting ? "bg-zinc-950" : `bg-gradient-to-b ${theme.gradient} to-black`}`}
@@ -1020,8 +1069,8 @@ const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
               >
                 {timeLeft}
               </span>
-              <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-zinc-400 mt-2">
-                {isResting ? "DESCANSO" : "TRABAJO"}
+              <span className={`text-[10px] sm:text-xs tracking-[0.3em] uppercase mt-3 transition-all duration-300 ${tempoColor} ${tempoScale} ${tempoWeight} drop-shadow-md`}>
+                {tempoInstruction}
               </span>
             </div>
 
@@ -1137,13 +1186,37 @@ const TrainingView: React.FC<{
 
   return (
     <div className="h-full flex flex-col px-4 sm:px-6 overflow-y-auto pb-32 pt-safe-top">
-      {selectedEx && (
-        <ExerciseGuideModal
-          exercise={selectedEx}
-          onClose={() => setSelectedEx(null)}
-          theme={theme}
-        />
-      )}
+      <AnimatePresence>
+        {selectedEx && (
+          <ExerciseGuideModal
+            exercise={selectedEx}
+            onClose={() => setSelectedEx(null)}
+            theme={theme}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Camino del Atleta - Fases */}
+      <div className="flex gap-3 overflow-x-auto pb-2 mt-4 snap-x hide-scrollbar scroll-smooth">
+        {/* Fase 1 (Activa) */}
+        <div className="min-w-[260px] snap-center bg-zinc-900 border border-emerald-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(52,211,153,0.1)] relative overflow-hidden flex-shrink-0 cursor-default">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
+          <p className="text-[10px] font-black tracking-widest text-emerald-500 uppercase mb-1">Fase Activa</p>
+          <h3 className="text-white font-black text-lg leading-tight uppercase tracking-tight">Fase 1: Zero Equipment</h3>
+          <p className="text-zinc-400 text-xs mt-2 font-medium">Fundamentos (8 Semanas). Domina tu cuerpo sin material.</p>
+        </div>
+
+        {/* Fase 2 (Bloqueada) */}
+        <div className="min-w-[260px] snap-center bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4 relative overflow-hidden flex-shrink-0 cursor-not-allowed">
+          <div className="absolute top-4 right-4 text-zinc-700">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <p className="text-[10px] font-black tracking-widest text-zinc-600 uppercase mb-1">Próximamente</p>
+          <h3 className="text-zinc-500 font-black text-lg leading-tight uppercase tracking-tight">Fase 2: Gravedad Cero</h3>
+          <p className="text-zinc-600 text-xs mt-2 font-medium">Requiere equipamiento (Barra). Desbloquea al completar la Fase 1.</p>
+        </div>
+      </div>
+
 
       {/* Week Navigation */}
       <div className="flex items-center justify-between mb-4 mt-4 max-w-sm mx-auto w-full px-2">
@@ -1161,7 +1234,7 @@ const TrainingView: React.FC<{
         <button 
           onClick={() => setWeek(Math.min(8, week + 1) as WeekLevel)}
           className="w-11 h-11 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-full active:scale-95 text-zinc-400 disabled:opacity-30 disabled:pointer-events-none transition-transform"
-          disabled={week === 8 || week >= userData.currentWeek}
+          disabled={week === 8}
         >
            <ChevronRight size={20} />
         </button>
@@ -1239,7 +1312,7 @@ const TrainingView: React.FC<{
                       const isCompleted = isRoutineComplete || isManuallyChecked;
                       
                       return (
-                        <div key={i} onClick={() => setSelectedEx(ex)} className={`group relative flex items-center gap-2 bg-black/40 p-2 rounded-[14px] border transition-all active:scale-[0.98] cursor-pointer overflow-hidden ${isCompleted ? "border-emerald-500/30 bg-emerald-900/10" : "border-white/5 hover:bg-zinc-900/40"}`}>
+                        <motion.div layoutId={`exercise-${ex.id}`} key={i} onClick={() => setSelectedEx(ex)} className={`group relative flex items-center gap-2 bg-black/40 p-2 rounded-[14px] border transition-all active:scale-[0.98] cursor-pointer overflow-hidden ${isCompleted ? "border-emerald-500/30 bg-emerald-900/10" : "border-white/5 hover:bg-zinc-900/40"}`}>
                            
                            {isCompleted && (
                              <div className="absolute inset-0 bg-emerald-500/5 z-0 pointer-events-none" />
@@ -1248,17 +1321,17 @@ const TrainingView: React.FC<{
                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border relative z-10 ${isCompleted ? "bg-emerald-500 text-black border-transparent shadow-[0_0_10px_rgba(16,185,129,0.3)]" : `bg-zinc-900 border-white/10 ${theme.text}`}`}>
                               {isCompleted ? <Check size={14} strokeWidth={3} /> : ex.category === "push" ? <Zap size={14} /> : ex.category === "legs" ? <Footprints size={14} /> : ex.category === "core" ? <Activity size={14} /> : <Dumbbell size={14} />}
                            </div>
-                           <div className="flex-1 text-left relative z-10 min-w-0">
-                               <div className={`text-xs font-bold truncate transition-colors leading-tight ${isCompleted ? "text-emerald-400" : "text-zinc-200 group-hover:text-white"}`}>{ex.name}</div>
+                           <motion.div layout={`text-container-${ex.id}`} className="flex-1 text-left relative z-10 min-w-0">
+                               <motion.div layout={`title-${ex.id}`} className={`text-xs font-bold truncate transition-colors leading-tight ${isCompleted ? "text-emerald-400" : "text-zinc-200 group-hover:text-white"}`}>{ex.name}</motion.div>
                                <div className={`text-[9px] uppercase font-bold tracking-widest truncate ${isCompleted ? "text-emerald-500/70" : "text-zinc-500"}`}>
                                  {ex.sets} × {ex.reps} {isCompleted && "• HECHO"}
                                </div>
-                           </div>
+                           </motion.div>
                            
                            <button onClick={(e) => { e.stopPropagation(); onToggleCheck(ex.name); }} className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors border ${isCompleted ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:bg-white/10"}`}>
                               {isCompleted ? <RotateCcw size={12} /> : <Check size={12} />}
                            </button>
-                        </div>
+                        </motion.div>
                       );
                   })}
               </div>
@@ -1291,10 +1364,37 @@ const TrainingView: React.FC<{
 const StatsView: React.FC<{
   userData: UserData;
   onWaterUpdate: (count: number) => void;
-}> = ({ userData, onWaterUpdate }) => {
-  const [selectedEntry, setSelectedEntry] = useState<UserData['history'][0] | null>(null);
+  onRequestWaterEdit: () => void;
+}> = ({ userData, onWaterUpdate, onRequestWaterEdit }) => {
+  type HistoryEntry = { date: string; calories: number; week: number; day: number; };
+  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [showChart, setShowChart] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+
+  // Helper to render the hydration row inside selectedEntry modal
+  const renderHydrationRow = (entry: HistoryEntry) => {
+    const entryDateIso = new Date(entry.date).toISOString().split('T')[0];
+    const wGoal = userData.waterGoal ?? 8;
+    const todayIso = new Date().toISOString().split('T')[0];
+    const isToday = entryDateIso === todayIso;
+    const waterRecord = isToday
+      ? { glasses: userData.waterIntake }
+      : (userData.waterHistory ?? []).find((w: { date: string; glasses: number }) => w.date === entryDateIso);
+    if (!waterRecord) return null;
+    const done = waterRecord.glasses >= wGoal;
+    return (
+      <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+        done ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'
+      }`}>
+        <span className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">Hidratación</span>
+        <span className={`font-black text-sm ${
+          done ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'text-red-400'
+        }`}>
+          {waterRecord.glasses}/{wGoal} vasos — {done ? 'Completo ✓' : 'Incompleto'}
+        </span>
+      </div>
+    );
+  };
 
   const todayDate = new Date();
   const currentMonth = todayDate.getMonth();
@@ -1335,6 +1435,26 @@ const StatsView: React.FC<{
     return data;
   }, [historyMap, todayDate]);
 
+  // Gamification & Badges Logic
+  const currentWeek = userData.currentWeek || 1;
+  const getVolume = (week: WeekLevel, exId: string) => {
+    let totals = 0;
+    for (let d = 1; d <= 4; d++) {
+       const plan = getDailyPlan(week, d);
+       plan.exercises.forEach(ex => {
+         if (ex.id === exId) {
+            const reps = typeof ex.reps === 'number' ? ex.reps : parseInt(ex.reps.toString().split('/')[0]) || 0;
+            const multiplier = ex.id === 'lunges' ? 2 : 1; 
+            totals += (ex.sets || 1) * reps * multiplier;
+         }
+       });
+    }
+    return totals;
+  };
+
+  const diffPush = getVolume(currentWeek, 'pushups') - getVolume(1, 'pushups');
+  const diffSquat = getVolume(currentWeek, 'squats') - getVolume(1, 'squats');
+
   return (
     <div className="h-full p-6 overflow-y-auto pb-24 text-white">
       <h2 className="text-2xl font-black italic tracking-tighter uppercase mb-6">
@@ -1343,6 +1463,17 @@ const StatsView: React.FC<{
 
       {/* Water Tracker moved to top */}
       <div className="mb-8">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest pl-1">
+            Registro Diario
+          </h3>
+          <button 
+            onClick={onRequestWaterEdit}
+            className="text-[9px] text-blue-500 font-bold uppercase tracking-widest hover:text-blue-400 pr-1 flex items-center gap-1"
+          >
+            <RotateCcw size={10} /> Editar Día Pasado
+          </button>
+        </div>
         <WaterTracker
           initialGlasses={userData.waterIntake}
           goal={userData.waterGoal ?? 8}
@@ -1391,49 +1522,55 @@ const StatsView: React.FC<{
         </div>
       </div>
 
-      {/* Chart Section Toggle */}
-      <button 
-        onClick={() => setShowChart(!showChart)}
-        className="w-full flex items-center justify-between mt-8 mb-4 active:scale-95 transition-transform"
-      >
-        <div className="flex items-center gap-2 text-zinc-400">
-          <BarChart2 size={16} />
-          <h3 className="text-sm font-bold uppercase tracking-wider">
-            Rendimiento Semanal
-          </h3>
-        </div>
-        <ChevronUp size={16} className={`text-zinc-500 transition-transform ${showChart ? '' : 'rotate-180'}`} />
-      </button>
-
-      {/* Chart Section Content */}
-      <div className={`transition-all duration-300 overflow-hidden ${showChart ? 'max-h-64 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0'}`}>
-        <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/5">
-          <div className="h-40 w-full px-1">
-            {showChart && (
-              <ResponsiveContainer width="99%" height="100%">
-                <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', color: '#fff' }}
-                    itemStyle={{ color: '#10B981', fontWeight: 'bold' }}
-                    formatter={(value: any) => [`${value} kcal`, 'Quemado']}
-                    labelStyle={{ display: 'none' }}
-                  />
-                  <Bar dataKey="calories" radius={[4, 4, 4, 4]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.calories > 0 ? '#10B981' : '#27272a'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+      {/* Badges / Gamification Section */}
+      <div className="mt-8 mb-4">
+        <h3 className="text-xl font-black italic tracking-tighter uppercase mb-4 flex items-center gap-2">
+          <Trophy className="text-amber-500" size={20} />
+          Logros e Insignias
+        </h3>
+        
+        {currentWeek > 1 ? (
+          <div className="grid gap-3">
+            {diffPush > 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
+                 <div className="absolute right-0 top-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
+                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <span className="text-xl">💪</span>
+                 </div>
+                 <div className="relative z-10">
+                    <p className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-1">Evolución Push</p>
+                    <h4 className="text-white font-black text-sm uppercase">¡Doble de Fuerza!</h4>
+                    <p className="text-zinc-400 text-xs mt-0.5">Semana {currentWeek}: <strong className="text-emerald-400">+{diffPush}</strong> flexiones semanales vs inicio.</p>
+                 </div>
+              </div>
+            )}
+            {diffSquat > 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
+                 <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
+                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <span className="text-xl">🦵</span>
+                 </div>
+                 <div className="relative z-10">
+                    <p className="text-[10px] text-emerald-500 font-bold tracking-widest uppercase mb-1">Evolución Squat</p>
+                    <h4 className="text-white font-black text-sm uppercase">Piernas de Acero</h4>
+                    <p className="text-zinc-400 text-xs mt-0.5">Semana {currentWeek}: <strong className="text-emerald-400">+{diffSquat}</strong> sentadillas semanales vs inicio.</p>
+                 </div>
+              </div>
+            )}
+            {diffPush <= 0 && diffSquat <= 0 && (
+              <div className="text-center p-6 border border-zinc-800 rounded-2xl bg-zinc-900/50">
+                 <p className="text-zinc-500 text-xs font-medium">Completa las siguientes semanas para desbloquear tus primeros récords de volumen de entrenamiento.</p>
+              </div>
             )}
           </div>
-          <div className="flex justify-between mt-3 px-3">
-            {chartData.map((d, i) => (
-              <span key={i} className={`text-[10px] font-bold ${d.calories > 0 ? 'text-emerald-400' : 'text-zinc-600'}`}>{d.name}</span>
-            ))}
+        ) : (
+          <div className="text-center p-6 border border-zinc-800 rounded-2xl bg-zinc-900/50">
+             <div className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
+               <Layers className="text-zinc-500" size={18} />
+             </div>
+             <p className="text-zinc-400 text-sm font-medium">Completa la Semana 1 para empezar a ver tu evolución en estadísticas y desbloquear insignias.</p>
           </div>
-        </div>
+        )}
       </div>
 
       <button 
@@ -1515,37 +1652,11 @@ const StatsView: React.FC<{
                  </div>
                </div>
                {/* Hydration row */}
-               {(() => {
-                 const entryDateIso = new Date(selectedEntry.date).toISOString().split('T')[0];
-                 const waterGoal = userData.waterGoal ?? 8;
-                 // Check today vs entry date
-                 const todayIso = new Date().toISOString().split('T')[0];
-                 const isToday = entryDateIso === todayIso;
-                 const waterRecord = isToday
-                   ? { glasses: userData.waterIntake }
-                   : (userData.waterHistory ?? []).find(w => w.date === entryDateIso);
-                 if (!waterRecord) return null;
-                 const done = waterRecord.glasses >= waterGoal;
-                 return (
-                   <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-                     done
-                       ? 'bg-emerald-500/10 border-emerald-500/30'
-                       : 'bg-red-500/10 border-red-500/30'
-                   }`}>
-                     <span className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">Hidratación</span>
-                     <span className={`font-black text-sm ${
-                       done ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'text-red-400'
-                     }`}>
-                       {waterRecord.glasses}/{waterGoal} vasos — {done ? 'Completo ✓' : 'Incompleto'}
-                     </span>
-                   </div>
-                 );
-               })()}
+               {renderHydrationRow(selectedEntry)}
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };
@@ -1721,6 +1832,10 @@ const AppInner: React.FC = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
+  // Water Edit Modal States
+  const [showWaterEdit, setShowWaterEdit] = useState(false);
+  const [editWaterData, setEditWaterData] = useState({ date: new Date().toISOString().split('T')[0], glasses: 8 });
+
   const [userData, setUserData] = useState<UserData>(() => {
     const saved = localStorage.getItem("chronos_v8_data");
     const parsed = saved ? JSON.parse(saved) : null;
@@ -1855,6 +1970,29 @@ const AppInner: React.FC = () => {
 
   const handleWorkoutComplete = (calories: number) => {
     setPendingCompletion({ calories, week, day, source: 'timer' });
+  };
+
+  const handlePastWaterEdit = (dateIso: string, glasses: number) => {
+    setUserData(prev => {
+       const newHistory = prev.waterHistory ? [...prev.waterHistory] : [];
+       const existingIndex = newHistory.findIndex(w => w.date === dateIso);
+       
+       if (existingIndex >= 0) {
+         newHistory[existingIndex] = { ...newHistory[existingIndex], glasses };
+       } else {
+         newHistory.push({ date: dateIso, glasses });
+       }
+       
+       // Si el dateIso es hoy, actualiza también waterIntake actual
+       const todayIso = new Date().toISOString().split('T')[0];
+       const isToday = dateIso === todayIso;
+
+       return {
+         ...prev,
+         waterHistory: newHistory,
+         ...(isToday ? { waterIntake: glasses } : {})
+       };
+    });
   };
 
   const processCompletion = (completionData: {calories: number, week: WeekLevel, day: number, source: 'timer' | 'manual'}, dateIso: string) => {
@@ -2069,6 +2207,80 @@ const AppInner: React.FC = () => {
         </div>
       )}
 
+      {/* Modern In-App Water Edit Modal Global */}
+      <AnimatePresence>
+        {showWaterEdit && (
+          <div className="fixed inset-0 z-[70] flex justify-center items-center p-6 bg-black/80 backdrop-blur-sm">
+             <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl relative"
+             >
+                <div className="flex flex-col items-center mb-6">
+                   <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mb-3 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                      <RotateCcw size={20} className="text-blue-400" />
+                   </div>
+                   <h3 className="text-white font-black uppercase tracking-widest text-lg">Modificar Agua</h3>
+                   <p className="text-zinc-500 text-[10px] font-bold tracking-widest uppercase text-center mt-1">
+                     Corrige el registro de días perdidos
+                   </p>
+                </div>
+
+                <div className="space-y-4">
+                   <div>
+                     <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1.5 block px-1">Fecha</label>
+                     <input 
+                       type="date" 
+                       value={editWaterData.date}
+                       onChange={(e) => setEditWaterData(prev => ({ ...prev, date: e.target.value }))}
+                       className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white font-black text-sm outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all [color-scheme:dark]"
+                     />
+                   </div>
+                   <div>
+                     <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1.5 block px-1">Vasos (250ml)</label>
+                     <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden p-1 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all">
+                        <button 
+                          onClick={() => setEditWaterData(prev => ({ ...prev, glasses: Math.max(0, prev.glasses - 1) }))}
+                          className="w-10 h-10 flex items-center justify-center bg-zinc-900 rounded-lg text-zinc-400 hover:text-white active:scale-95 transition-all"
+                        >-</button>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={editWaterData.glasses}
+                          onChange={(e) => setEditWaterData(prev => ({ ...prev, glasses: parseInt(e.target.value) || 0 }))}
+                          className="flex-1 bg-transparent text-center text-white font-black text-lg outline-none"
+                        />
+                        <button 
+                          onClick={() => setEditWaterData(prev => ({ ...prev, glasses: prev.glasses + 1 }))}
+                          className="w-10 h-10 flex items-center justify-center bg-zinc-900 rounded-lg text-zinc-400 hover:text-white active:scale-95 transition-all"
+                        >+</button>
+                     </div>
+                   </div>
+                </div>
+
+                <div className="flex gap-2 mt-8">
+                   <button 
+                     onClick={() => setShowWaterEdit(false)}
+                     className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors"
+                   >
+                     Cancelar
+                   </button>
+                   <button 
+                     onClick={() => {
+                        handlePastWaterEdit(editWaterData.date, editWaterData.glasses);
+                        setShowWaterEdit(false);
+                     }}
+                     className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                   >
+                     Guardar
+                   </button>
+                </div>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {pendingCompletion && (
         <DateSelectorModal
            onSelect={(dateIso) => processCompletion(pendingCompletion, dateIso)}
@@ -2085,7 +2297,11 @@ const AppInner: React.FC = () => {
       <div className="flex-1 overflow-hidden relative">
         {activeTab === "home" && (
           <div className="absolute inset-0 animate-in slide-in-from-left-4 fade-in duration-300">
-            <StatsView userData={userData} onWaterUpdate={handleWaterUpdate} />
+            <StatsView 
+               userData={userData} 
+               onWaterUpdate={handleWaterUpdate} 
+               onRequestWaterEdit={() => setShowWaterEdit(true)} 
+            />
           </div>
         )}
         {activeTab === "settings" && (
